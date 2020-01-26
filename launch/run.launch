@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<launch>
+
+  <arg name="rate"	default="10.0"/>
+  <arg name="config"	default=""/>
+
+  <node name="dhaiba_ros_bridge" pkg="dhaiba_ros" type="dhaiba_ros_bridge"
+  	output="screen">
+    <param name="rate"		value="$(arg rate)"/>
+    <param name="config"	value="$(arg config)"/>
+  </node>
+
+</launch>

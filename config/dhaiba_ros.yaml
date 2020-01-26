@@ -1,0 +1,4 @@
+dhaiba_ros:
+  root_frame: world
+  leaf_frames: [a_bot_ee_link, b_bot_ee_link]
+  
