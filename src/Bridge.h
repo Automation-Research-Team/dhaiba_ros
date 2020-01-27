@@ -3,12 +3,13 @@
 * \author	Toshio UESHIBA
 * \brief	Bridge software betwenn ROS and Dhaiba Works
 */
-#include <iostream>
 #include <map>
-
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include <ddynamic_reconfigure/ddynamic_reconfigure.h>
+
+#include <DhaibaConnectN/Common.h>
+#include <DhaibaConnectN/idl/TopicDataTypeCore.h>
 
 namespace dhaiba_ros
 {
@@ -20,7 +21,7 @@ class Bridge
   private:
     struct frame_props
     {
-	std::string	mesh = "";
+	std::string	mesh_file = "";
 	bool		published = false;
     };
     
@@ -31,6 +32,7 @@ class Bridge
     void	run()					;
 	
   private:
+    bool	initialize()						;
     void	tick()							;
     bool	send_armatures(const std::string& frame, ros::Time time);
 
