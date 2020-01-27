@@ -23,167 +23,54 @@ Bridge::Bridge(const std::string& name)
     :_nh(name),
      _listener(),
      _rate(10.0),
-     _root_frame(""),
-     _leaf_frames()
+     _root_frame("map")
 {
-    _nh.param("rate", _rate, 10.0);
-
-  // Set root_frame and leaf_frames from config file if specified.
-    std::string	config;
-    _nh.param("config",	config,	std::string(""));
-    if (config != "")
-    {
-	try
-	{
-	    const auto	conf = YAML::LoadFile(
-				ros::package::getPath("dhaiba_ros")
-				+ "/config/" + config + ".yaml");
-	    _root_frame  = conf["root_frame" ].template as<std::string>();
-	    _leaf_frames = conf["leaf_frames"].template as<std::vector<std::string> >();
-	}
-	catch (const std::exception& err)
-	{
-	    ROS_ERROR_STREAM("(dhaiba_ros::Bridge) " << err.what());
-	}
-    }
+    _nh.param("rate",	    _rate,	 10.0);
+    _nh.param("root_frame", _root_frame, std::string("map"));
 }
 
 void
 Bridge::run()
 {
     ros::Rate	looprate(_rate);
-    bool	initialized = false;
     
     while (ros::ok())
     {
-	if (!initialized)
-	    initialized = initialize();
-
 	tick();
 	ros::spinOnce();
 	looprate.sleep();
     }
 }
 
-bool
-Bridge::initialize()
-{
-  // Get all frames.
-    std::vector<std::string>	frames;
-    _listener.getFrameStrings(frames);
-
-    if (frames.empty())
-    {
-	ROS_WARN_STREAM("(dhaiba_ros::Bridge) No frames obtained.");
-	return false;
-    }
-    
-  // Validate and reset _root_frame if necessary.
-    const auto	now = ros::Time::now();
-
-    for (const auto& frame : frames)
-    {
-	std::cerr << frame;
-	std::string parent;
-	if (_listener.getParent(frame, now, parent))
-	    std::cerr << " -> " << parent << std::endl;
-	else
-	    std::cerr << " -> " << parent << "[no_parent]" << std::endl;
-    }
-
-    if (!_listener.frameExists(_root_frame))
-    {
-	std::cerr << "Debug point." << std::endl;
-
-	_root_frame = *std::find_if(
-			frames.cbegin(), frames.cend(),
-			[this, now](const auto& frame)
-			{
-			    std::string	parent;
-			    return !_listener.getParent(frame, now, parent);
-			});
-    }
-    
-    ROS_INFO_STREAM("(dhaiba_ros::Bridge) Set root_frame to " << _root_frame);
-
-  // Validate and reset _leaf_frames if necesssry.
-    if (_leaf_frames.empty())
-    {
-	std::set<std::string>	leaf_frames(frames.begin(), frames.end());
-	std::for_each(frames.cbegin(), frames.cend(),
-		      [this, now, &leaf_frames](const auto& frame)
-		      {
-			  std::cerr << "Check " << frame << "... ";
-			  std::string parent;
-			  if (_listener.getParent(frame, now, parent))
-			  {
-			      std::cerr << "erase " << parent << std::endl;
-			      leaf_frames.erase(parent);
-			  }
-			  else
-			      std::cerr << "no parent." << std::endl;
-		      });
-
-	for (const auto& leaf_frame : leaf_frames)
-	    _leaf_frames.push_back(leaf_frame);
-    }
-
-    for (const auto& leaf_frame : _leaf_frames)
-	ROS_INFO_STREAM("(dhaiba_ros::Bridge) Set leaf_frame to "
-			<< leaf_frame);
-
-    return true;
-}
-    
 void
 Bridge::tick()
 {
     std::cerr << "-------------" << std::endl;
     
-    std::for_each(_armatures.begin(), _armatures.end(),
-		  [](auto&& val){ val.second.published = false; });
+  // Get all frames.
+    std::vector<std::string>	frames;
+    _listener.getFrameStrings(frames);
 		 
     const auto	now = ros::Time::now();
-    for (const auto& leaf_frame : _leaf_frames)
-    {
-	send_armatures(leaf_frame, now);
-	std::cerr << std::endl;
-    }
-}
-
-bool
-Bridge::send_armatures(const std::string& frame, ros::Time time)
-{
-    std::cerr << "send_armatures(): frame[" << frame << ']' << std::endl;
-    
-    if (frame == _root_frame || _armatures[frame].published)
-	return true;
-
-    std::string	parent;
-    if (_listener.getParent(frame, time, parent) &&
-	send_armatures(parent, time))
-    {
-	try
+    for (const auto& frame : frames)
+	if (frame != _root_frame)
 	{
-	    _listener.waitForTransform(_root_frame, frame, time,
-				       ros::Duration(10));
-	    tf::StampedTransform	transform;
-	    _listener.lookupTransform(_root_frame, frame, time, transform);
-	    const auto&	R = transform.getBasis();
-	    const auto&	t = transform.getOrigin();
-	    _armatures[frame].published = true;
+	    try
+	    {
+		_listener.waitForTransform(_root_frame, frame, now,
+					   ros::Duration(10));
+		tf::StampedTransform	transform;
+		_listener.lookupTransform(_root_frame, frame, now, transform);
+		const auto&	R = transform.getBasis();
+		const auto&	t = transform.getOrigin();
 
-	    std::cerr << "sent armature: " << frame << std::endl;
-	    
-	    return true;
+		std::cerr << "sent armature: " << frame << std::endl;
+	    }
+	    catch (const std::exception& err)
+	    {
+		ROS_ERROR_STREAM("failed to  send armature: " << err.what());
+	    }
 	}
-	catch (const std::exception& err)
-	{
-	    ROS_ERROR_STREAM("send_armature(): " << err.what());
-	}
-    }
-
-    return false;
 }
     
 }	// namespace dhaiba_ros

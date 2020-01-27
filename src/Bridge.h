@@ -18,13 +18,6 @@ namespace dhaiba_ros
 ************************************************************************/
 class Bridge
 {
-  private:
-    struct frame_props
-    {
-	std::string	mesh_file = "";
-	bool		published = false;
-    };
-    
   public:
 		Bridge(const std::string& name)		;
 
@@ -32,9 +25,7 @@ class Bridge
     void	run()					;
 	
   private:
-    bool	initialize()						;
-    void	tick()							;
-    bool	send_armatures(const std::string& frame, ros::Time time);
+    void	tick()					;
 
   private:
     ros::NodeHandle			_nh;
@@ -42,8 +33,6 @@ class Bridge
     double				_rate;
     
     std::string				_root_frame;
-    std::vector<std::string>		_leaf_frames;
-    std::map<std::string, frame_props>	_armatures;
 };
 
 }	// namespace dhaiba_ros

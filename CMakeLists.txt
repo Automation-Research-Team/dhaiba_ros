@@ -27,6 +27,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${YAML-CPP_INCLUDE_DIRS}
   ${TINYXML2_INCLUDE_DIRS}
+  /usr/local/include/Dhaiba
 )
 
 catkin_package(
