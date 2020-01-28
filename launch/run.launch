@@ -1,13 +1,15 @@
 <?xml version="1.0" ?>
 <launch>
 
-  <arg name="rate"	default="10.0"/>
-  <arg name="config"	default=""/>
-
+  <arg name="rate"		default="10.0"/>
+  <arg name="root_frame"	default="map"/>
+  <arg name="description_param"	default="/robot_description"/>
+    
   <node name="dhaiba_ros_bridge" pkg="dhaiba_ros" type="dhaiba_ros_bridge"
   	output="screen">
-    <param name="rate"		value="$(arg rate)"/>
-    <param name="config"	value="$(arg config)"/>
+    <param name="rate"			value="$(arg rate)"/>
+    <param name="root_frame"		value="$(arg root_frame)"/>
+    <param name="description_param"	value="$(arg description_param)"/>
   </node>
 
 </launch>

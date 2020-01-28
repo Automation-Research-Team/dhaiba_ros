@@ -9,7 +9,7 @@ add_compile_options(-pthread)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(YAML-CPP yaml-cpp REQUIRED)
-pkg_check_modules(TINYXML2 tinyxml2 REQUIRED)
+pkg_check_modules(URDFDOM urdfdom REQUIRED)
 
 find_package(catkin REQUIRED
   COMPONENTS
@@ -26,7 +26,7 @@ find_package(catkin REQUIRED
 include_directories(
   ${catkin_INCLUDE_DIRS}
   ${YAML-CPP_INCLUDE_DIRS}
-  ${TINYXML2_INCLUDE_DIRS}
+  ${URDFDOM_INCLUDE_DIRS}
   /usr/local/include/Dhaiba
 )
 
@@ -52,7 +52,8 @@ target_link_libraries(${PROJECT_NAME}_bridge
   ${catkin_LIBRARIES}
   ${roscpp_LIBRARIES}
   ${YAML-CPP_LIBRARIES}
-  ${TINYXML2_LIBRARIES}
+  ${URDFDOM_LIBRARIES}
+  DhaibaConnectN
 )
 
 #############
