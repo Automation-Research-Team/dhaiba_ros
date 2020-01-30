@@ -15,7 +15,6 @@ find_package(catkin REQUIRED
   COMPONENTS
     roscpp
     roslib
-    ddynamic_reconfigure
     geometry_msgs
     tf
 )

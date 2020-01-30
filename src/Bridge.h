@@ -1,13 +1,11 @@
 /*!
-* \file		Detector.h
+* \file		Bridge.h
 * \author	Toshio UESHIBA
 * \brief	Bridge software betwenn ROS and Dhaiba Works
 */
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
-#include <ddynamic_reconfigure/ddynamic_reconfigure.h>
 #include <urdf_parser/urdf_parser.h>
-
 #include <DhaibaConnectN/Common.h>
 
 namespace dhaiba_ros
@@ -24,22 +22,22 @@ class Bridge
     void	run()					;
 	
   private:
-    void	tick()						;
-    bool	initialize()					;
+    void	publish_link_state(const urdf::LinkConstSharedPtr& link,
+				   ros::Time time)			;
     void	armature_cb(DhaibaConnect::PublisherInfo* pub,
-			    DhaibaConnect::MatchingInfo*  info)	;
+			    DhaibaConnect::MatchingInfo*  info)		;
     
   private:
-    ros::NodeHandle			_nh;
-    const tf::TransformListener		_listener;
+    ros::NodeHandle				_nh;
+    const tf::TransformListener			_listener;
+    double					_rate;
 
-    double				_rate;
-    std::string				_root_frame;
-    urdf::ModelInterfaceSharedPtr	_model;
+    urdf::ModelInterfaceSharedPtr		_model;
+    urdf::LinkConstSharedPtr			_root_link;
     
-    DhaibaConnect::Manager*		_manager;
-    DhaibaConnect::PublisherInfo*	_armature_pub;
-    DhaibaConnect::PublisherInfo*	_link_state_pub;
+    DhaibaConnect::Manager*	  const		_manager;
+    DhaibaConnect::PublisherInfo* const		_armature_pub;
+    DhaibaConnect::PublisherInfo* const		_link_state_pub;
 };
 
 }	// namespace dhaiba_ros
