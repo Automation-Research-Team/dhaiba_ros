@@ -8,7 +8,6 @@ add_compile_options(-fpermissive)
 add_compile_options(-pthread)
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(YAML-CPP yaml-cpp REQUIRED)
 pkg_check_modules(URDFDOM urdfdom REQUIRED)
 
 find_package(catkin REQUIRED
@@ -24,7 +23,6 @@ find_package(catkin REQUIRED
 ###########
 include_directories(
   ${catkin_INCLUDE_DIRS}
-  ${YAML-CPP_INCLUDE_DIRS}
   ${URDFDOM_INCLUDE_DIRS}
   /usr/local/include/Dhaiba
 )
@@ -32,7 +30,6 @@ include_directories(
 catkin_package(
   CATKIN_DEPENDS
     roscpp
-    message_runtime
     geometry_msgs
 )
 
@@ -42,7 +39,6 @@ add_executable(${PROJECT_NAME}_bridge
 )
 
 add_dependencies(${PROJECT_NAME}_bridge
-  ${PROJECT_NAME}_gencpp
   ${${PREOJECT_NAME}_EXPORTED_TARGETS}
   ${catkin_EXPORTED_TARGETS}
 )
@@ -50,7 +46,6 @@ add_dependencies(${PROJECT_NAME}_bridge
 target_link_libraries(${PROJECT_NAME}_bridge
   ${catkin_LIBRARIES}
   ${roscpp_LIBRARIES}
-  ${YAML-CPP_LIBRARIES}
   ${URDFDOM_LIBRARIES}
   DhaibaConnectN
 )

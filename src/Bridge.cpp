@@ -3,9 +3,8 @@
 * \author	Toshio UESHIBA
 * \brief	Bridge software betwenn ROS and Dhaiba Works
 */
-#include "Bridge.h"
-#include <yaml-cpp/yaml.h>
 #include <DhaibaConnectN/idl/TopicDataTypeCore.h>
+#include "Bridge.h"
 
 namespace dhaiba_ros
 {
@@ -13,13 +12,32 @@ namespace dhaiba_ros
 *  static functions							*
 ************************************************************************/
 static urdf::Pose
-operator *(const urdf::Pose& S, const urdf::Pose& T)
+operator *(const urdf::Pose& a, const urdf::Pose& b)
 {
-    urdf::Pose	U;
-    U.position = S.rotation * T.position + S.position;
-    U.rotation = S.rotation * T.rotation;
+    urdf::Pose	result;
+    result.position = a.rotation * b.position + a.position;
+    result.rotation = a.rotation * b.rotation;
 
-    return U;
+    return result;
+}
+
+static std::array<double, 4>
+position(const urdf::Pose& pose)
+{
+    return {pose.position.x, pose.position.y, pose.position.z, 1};
+}
+    
+static std::array<double, 16>
+transform(const urdf::Pose& pose)
+{
+    const auto	rx = pose.rotation * urdf::Vector3(1, 0, 0);
+    const auto	ry = pose.rotation * urdf::Vector3(0, 1, 0);
+    const auto	rz = pose.rotation * urdf::Vector3(0, 0, 1);
+
+    return {rx.x, rx.y, rx.z, 0,
+	    ry.x, ry.y, ry.z, 0,
+	    rz.x, rz.y, rz.z, 0,
+	    pose.position.x, pose.position.y, pose.position.z, 1};
 }
     
 /************************************************************************
@@ -32,10 +50,8 @@ Bridge::Bridge(const std::string& name)
      _model(),
      _root_link(),
      _manager(DhaibaConnect::Manager::instance()),
-     _armature_pub(  _manager->createPublisher("DhaibaRos.Armature",
-					       "dhc::Armature", false, true)),
-     _link_state_pub(_manager->createPublisher("DhaibaRos.LinkState",
-					       "dhc::LinkState", false, false))
+     _armature_pub(nullptr),
+     _link_state_pub(nullptr)
 {
     _nh.param("rate", _rate, 10.0);
 
@@ -69,51 +85,93 @@ Bridge::Bridge(const std::string& name)
     const auto	root_link = std::find_if(links.cbegin(), links.cend(),
 					 [&root_frame](const auto& link)
 					 { return link->name == root_frame; });
+    if (root_link == links.cend())
+    {
+	ROS_WARN_STREAM("(dhaiba_ros_bridge) Frame \""
+			<< root_frame << "\" not found.");
+	_root_link = _model->getRoot();
+    }
+    else
+	_root_link = *root_link;
     _root_link = (root_link != links.cend() ? *root_link : _model->getRoot());
     ROS_INFO_STREAM("(dhaiba_ros_bridge) Set root frame to \""
 		    << _root_link->name << "\".");
-}
 
-void
-Bridge::armature_cb(DhaibaConnect::PublisherInfo* pub,
-		    DhaibaConnect::MatchingInfo*  info)
-{
-    dhc::Armature	armature;
-    create_armature_links(_root_link, armature.links(), urdf::Pose());
+  // Initialize manager.
+    std::cerr << "-------" << std::endl;
+    _manager->initialize(name);
 
-    pub->write(&armature);
+  // Create publisher for armature.
+    _armature_pub = _manager->createPublisher("DhaibaRos.Armature",
+					      "dhc::Armature", false, true);
+    if (!_armature_pub)
+    {
+	ROS_ERROR_STREAM("(dhaiba_ros_bridge) Failed to create publisher for armature.");
+	throw;
+    }
+    
+  // Create publisher for link state.
+    _link_state_pub = _manager->createPublisher("DhaibaRos.LinkState",
+						"dhc::LinkState",
+						false, false);
+    if (!_link_state_pub)
+    {
+	ROS_ERROR_STREAM("(dhaiba_ros_bridge) Failed to create publisher for link state.");
+	throw;
+    }
+    
+  // Register call back for armature pulblisher.
+    Connections::connect(&_armature_pub->matched,
+			 {[this](DhaibaConnect::PublisherInfo* pub,
+				 DhaibaConnect::MatchingInfo* info)
+			  {
+			      dhc::Armature	armature;
+			      create_armature_links(_root_link, urdf::Pose(),
+						    armature.links());
+			      pub->write(&armature);
+			  }});
+    std::cerr << "\n-------" << std::endl;
+    
+    ROS_INFO_STREAM("(dhaiba_ros_bridge) Node \""
+		    << name << "\" initialized.");
 }
 
 template <class LINKS> void
 Bridge::create_armature_links(const urdf::LinkConstSharedPtr& link,
-			      LINKS& armature_links, const urdf::Pose& pose)
+			      const urdf::Pose& pose,
+			      LINKS& armature_links) const
 {
     for (const auto& child_link : link->child_links)
     {
-	const auto&	link_name   = link->name;
-	const auto	child_joint = std::find_if(
-					link->child_joints.cbegin(),
-					link->child_joints.cend(),
-					[&link_name](const auto& joint)
-					{
-					    return (joint->parent_link_name
-						    == link_name);
-					});
+	const auto
+	    child_joint = std::find_if(link->child_joints.cbegin(),
+				       link->child_joints.cend(),
+				       [&child_link](const auto& joint)
+				       {
+					   return (joint->child_link_name
+						   == child_link->name);
+				       });
 	if (child_joint == link->child_joints.cend())
 	{
+	    ROS_ERROR_STREAM("(dhaiba_ros_bridge) Internal inconsistency! Child link["
+			     << child_link->name
+			     << "] is not found in child joints of link["
+			     << link->name << "].");
 	    throw;
 	}
 	
-	
-	typename LINKS::value_type	armature_link;
 
-	armature_link.linkName()       = child_joint->child_link_name;
-	armature_link.parentLinkName() = child_joint->parent_link_name;
-	
-	
+	const auto
+	    child_pose = (*child_joint)->parent_to_joint_origin_transform
+		       * pose;
+	typename LINKS::value_type	armature_link;
+	armature_link.linkName()	= (*child_joint)->child_link_name;
+	armature_link.parentLinkName()	= (*child_joint)->parent_link_name;
+	armature_link.Twj0().value()	= transform(child_pose);
+	armature_link.tailPosition0().value() = position(child_pose);
 	armature_links.push_back(armature_link);
 
-	
+	create_armature_links(child_link, child_pose, armature_links);
     }
 }
     
@@ -132,7 +190,8 @@ Bridge::run()
 }
 
 void
-Bridge::publish_link_state(const urdf::LinkConstSharedPtr& link, ros::Time time)
+Bridge::publish_link_state(const urdf::LinkConstSharedPtr& link,
+			   ros::Time time) const
 {
     for (const auto& child_link : link->child_links)
     {

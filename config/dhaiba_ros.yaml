@@ -1,3 +1,0 @@
-root_frame: a_bot_base_link
-leaf_frames: [a_bot_ee_link, a_bot_tool0]
-  
