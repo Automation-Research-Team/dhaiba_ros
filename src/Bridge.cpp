@@ -3,7 +3,6 @@
 * \author	Toshio UESHIBA
 * \brief	Bridge software betwenn ROS and DhaibaWorks
 */
-#include <DhaibaConnectN/idl/TopicDataTypeCore.h>
 #include "Bridge.h"
 
 namespace dhaiba_ros
@@ -145,8 +144,8 @@ Bridge::Bridge(const std::string& name)
 				 DhaibaConnect::MatchingInfo* info)
 			  {
 			      dhc::Armature	armature;
-			      create_armature_links(_root_link, urdf::Pose(),
-						    armature.links());
+			      create_armature(_root_link, urdf::Pose(),
+					      armature);
 			      pub->write(&armature);
 			  }});
     std::cerr << "\n-------" << std::endl;
@@ -155,10 +154,26 @@ Bridge::Bridge(const std::string& name)
 		    << name << "\" initialized.");
 }
 
-template <class LINKS> void
-Bridge::create_armature_links(const urdf::LinkConstSharedPtr& link,
-			      const urdf::Pose& pose,
-			      LINKS& armature_links) const
+void
+Bridge::run() const
+{
+    ros::Rate	looprate(_rate);
+    
+    while (ros::ok())
+    {
+	std::cerr << "-------------" << std::endl;
+	dhc::LinkState	link_state;
+	create_link_state(_root_link, ros::Time::now(), link_state);
+	_link_state_pub->write(&link_state);
+
+	ros::spinOnce();
+	looprate.sleep();
+    }
+}
+
+void
+Bridge::create_armature(const urdf::LinkConstSharedPtr& link,
+			const urdf::Pose& pose, dhc::Armature& armature) const
 {
     for (const auto& child_link : link->child_links)
     {
@@ -183,37 +198,20 @@ Bridge::create_armature_links(const urdf::LinkConstSharedPtr& link,
 	const auto
 	    child_pose = (*child_joint)->parent_to_joint_origin_transform
 		       * pose;
-	typename LINKS::value_type	armature_link;
+	dhc::Link	armature_link;
 	armature_link.linkName()	= (*child_joint)->child_link_name;
 	armature_link.parentLinkName()	= (*child_joint)->parent_link_name;
 	armature_link.Twj0()		= transform(child_pose);
 	armature_link.tailPosition0()	= position(child_pose);
-	armature_links.push_back(armature_link);
+	armature.links().push_back(armature_link);
 
-	create_armature_links(child_link, child_pose, armature_links);
+	create_armature(child_link, child_pose, armature);
     }
 }
     
 void
-Bridge::run() const
-{
-    ros::Rate	looprate(_rate);
-    
-    while (ros::ok())
-    {
-	std::cerr << "-------------" << std::endl;
-	dhc::LinkState	link_state;
-	create_transforms(_root_link, ros::Time::now(), link_state.value());
-	_link_state_pub->write(&link_state);
-
-	ros::spinOnce();
-	looprate.sleep();
-    }
-}
-
-template <class TRANSFORMS> void
-Bridge::create_transforms(const urdf::LinkConstSharedPtr& link,
-			  ros::Time time, TRANSFORMS& transforms) const
+Bridge::create_link_state(const urdf::LinkConstSharedPtr& link,
+			  ros::Time time, dhc::LinkState& link_state) const
 {
     for (const auto& child_link : link->child_links)
     {
@@ -224,9 +222,9 @@ Bridge::create_transforms(const urdf::LinkConstSharedPtr& link,
 	    tf::StampedTransform	stampedTransform;
 	    _listener.lookupTransform(_root_link->name, child_link->name,
 				      time, stampedTransform);
-	    transforms.push_back(transform(stampedTransform));
+	    link_state.value().push_back(transform(stampedTransform));
 
-	    std::cerr << "publish link state: " << child_link->name
+	    std::cerr << "create state of link[" << child_link->name << ']'
 		      << std::endl;
 	}
 	catch (const std::exception& err)
@@ -235,7 +233,7 @@ Bridge::create_transforms(const urdf::LinkConstSharedPtr& link,
 			     << child_link->name << "]. " << err.what());
 	}
 
-	create_transforms(child_link, time, transforms);
+	create_link_state(child_link, time, link_state);
     }
 }
 

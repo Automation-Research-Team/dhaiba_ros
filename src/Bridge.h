@@ -7,6 +7,7 @@
 #include <tf/transform_listener.h>
 #include <urdf_parser/urdf_parser.h>
 #include <DhaibaConnectN/Common.h>
+#include <DhaibaConnectN/idl/TopicDataTypeCore.h>
 
 namespace dhaiba_ros
 {
@@ -21,14 +22,12 @@ class Bridge
     void	run()						const	;
 	
   private:
-    template <class LINKS>
-    void	create_armature_links(const urdf::LinkConstSharedPtr& link,
-				      const urdf::Pose& pose,
-				      LINKS& armature_links)	const	;
-    template <class TRANSFORMS>
-    void	create_transforms(const urdf::LinkConstSharedPtr& link,
+    void	create_armature(const urdf::LinkConstSharedPtr& link,
+				const urdf::Pose& pose,
+				dhc::Armature& armature)	const	;
+    void	create_link_state(const urdf::LinkConstSharedPtr& link,
 				  ros::Time time,
-				  TRANSFORMS& transforms)	const	;
+				  dhc::LinkState& link_state)	const	;
     
   private:
     ros::NodeHandle			_nh;
