@@ -1,7 +1,7 @@
 /*!
 * \file		main.cpp
 * \author	Toshio UESHIBA
-* \brief	Bridge software betwenn ROS and Dhaiba Works
+* \brief	Bridge software betwenn ROS and DhaibaWorks
 */
 #include <ros/ros.h>
 #include "Bridge.h"
@@ -15,7 +15,7 @@ main(int argc, char** argv)
 
     try
     {
-	dhaiba_ros::Bridge	bridge("~");
+	const dhaiba_ros::Bridge	bridge("~");
 	bridge.run();
     }
     catch (const std::exception& err)

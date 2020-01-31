@@ -1,7 +1,7 @@
 /*!
 * \file		Bridge.cpp
 * \author	Toshio UESHIBA
-* \brief	Bridge software betwenn ROS and Dhaiba Works
+* \brief	Bridge software betwenn ROS and DhaibaWorks
 */
 #include <DhaibaConnectN/idl/TopicDataTypeCore.h>
 #include "Bridge.h"
@@ -21,23 +21,42 @@ operator *(const urdf::Pose& a, const urdf::Pose& b)
     return result;
 }
 
-static std::array<double, 4>
+static dhc::Vec4
 position(const urdf::Pose& pose)
 {
-    return {pose.position.x, pose.position.y, pose.position.z, 1};
+    dhc::Vec4	vec;
+    vec.value() = {pose.position.x, pose.position.y, pose.position.z, 1};
+
+    return vec;
 }
     
-static std::array<double, 16>
+static dhc::Mat44
 transform(const urdf::Pose& pose)
 {
     const auto	rx = pose.rotation * urdf::Vector3(1, 0, 0);
     const auto	ry = pose.rotation * urdf::Vector3(0, 1, 0);
     const auto	rz = pose.rotation * urdf::Vector3(0, 0, 1);
+    dhc::Mat44	mat;
+    mat.value() = {rx.x, rx.y, rx.z, 0,
+		   ry.x, ry.y, ry.z, 0,
+		   rz.x, rz.y, rz.z, 0,
+		   pose.position.x, pose.position.y, pose.position.z, 1};
 
-    return {rx.x, rx.y, rx.z, 0,
-	    ry.x, ry.y, ry.z, 0,
-	    rz.x, rz.y, rz.z, 0,
-	    pose.position.x, pose.position.y, pose.position.z, 1};
+    return mat;
+}
+    
+static dhc::Mat44
+transform(const tf::Transform& trns)
+{
+    const auto&	R = trns.getBasis();
+    const auto&	t = trns.getOrigin();
+    dhc::Mat44	mat;
+    mat.value() = {R[0][0], R[1][0], R[2][0], 0,
+		   R[0][1], R[1][1], R[2][1], 0,
+		   R[0][2], R[1][2], R[2][2], 0,
+		   t.x(),   t.y(),   t.z(),   1};
+
+    return mat;
 }
     
 /************************************************************************
@@ -167,8 +186,8 @@ Bridge::create_armature_links(const urdf::LinkConstSharedPtr& link,
 	typename LINKS::value_type	armature_link;
 	armature_link.linkName()	= (*child_joint)->child_link_name;
 	armature_link.parentLinkName()	= (*child_joint)->parent_link_name;
-	armature_link.Twj0().value()	= transform(child_pose);
-	armature_link.tailPosition0().value() = position(child_pose);
+	armature_link.Twj0()		= transform(child_pose);
+	armature_link.tailPosition0()	= position(child_pose);
 	armature_links.push_back(armature_link);
 
 	create_armature_links(child_link, child_pose, armature_links);
@@ -176,22 +195,25 @@ Bridge::create_armature_links(const urdf::LinkConstSharedPtr& link,
 }
     
 void
-Bridge::run()
+Bridge::run() const
 {
     ros::Rate	looprate(_rate);
     
     while (ros::ok())
     {
 	std::cerr << "-------------" << std::endl;
-	publish_link_state(_root_link, ros::Time::now());
+	dhc::LinkState	link_state;
+	create_transforms(_root_link, ros::Time::now(), link_state.value());
+	_link_state_pub->write(&link_state);
+
 	ros::spinOnce();
 	looprate.sleep();
     }
 }
 
-void
-Bridge::publish_link_state(const urdf::LinkConstSharedPtr& link,
-			   ros::Time time) const
+template <class TRANSFORMS> void
+Bridge::create_transforms(const urdf::LinkConstSharedPtr& link,
+			  ros::Time time, TRANSFORMS& transforms) const
 {
     for (const auto& child_link : link->child_links)
     {
@@ -199,11 +221,10 @@ Bridge::publish_link_state(const urdf::LinkConstSharedPtr& link,
 	{
 	    _listener.waitForTransform(_root_link->name, child_link->name,
 				       time, ros::Duration(10));
-	    tf::StampedTransform	transform;
+	    tf::StampedTransform	stampedTransform;
 	    _listener.lookupTransform(_root_link->name, child_link->name,
-				      time, transform);
-	    const auto&	R = transform.getBasis();
-	    const auto&	t = transform.getOrigin();
+				      time, stampedTransform);
+	    transforms.push_back(transform(stampedTransform));
 
 	    std::cerr << "publish link state: " << child_link->name
 		      << std::endl;
@@ -211,10 +232,10 @@ Bridge::publish_link_state(const urdf::LinkConstSharedPtr& link,
 	catch (const std::exception& err)
 	{
 	    ROS_ERROR_STREAM("(dhaiba_ros_bridge): Failed to publish link state["
-			     << child_link->name << "]: " << err.what());
+			     << child_link->name << "]. " << err.what());
 	}
 
-	publish_link_state(child_link, time);
+	create_transforms(child_link, time, transforms);
     }
 }
 
