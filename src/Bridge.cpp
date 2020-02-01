@@ -175,6 +175,36 @@ void
 Bridge::create_armature(const urdf::LinkConstSharedPtr& link,
 			const urdf::Pose& pose, dhc::Armature& armature) const
 {
+    if (link->visual)
+    {
+	const auto	visual = link->visual;
+
+	if (visual->geometry)
+	{
+	    const auto	pose	 = visual->origin;
+	    const auto	geometry = visual->geometry;
+	    
+	    switch (geometry->type)
+	    {
+	      case urdf::Geometry::SPHERE:
+		break;
+	      case urdf::Geometry::BOX:
+		break;
+	      case urdf::Geometry::CYLINDER:
+		break;
+	      case urdf::Geometry::MESH:
+		break;
+	      default:
+		break;
+	    }
+	}
+
+	if (visual->material)
+	{
+	    const auto	material = visual->material;
+	}
+    }
+    
     for (const auto& child_link : link->child_links)
     {
 	const auto
