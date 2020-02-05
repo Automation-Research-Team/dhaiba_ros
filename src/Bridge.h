@@ -26,7 +26,6 @@ class Bridge
 				const urdf::Pose& pose,
 				dhc::Armature& armature)	const	;
     void	create_link_state(const urdf::LinkConstSharedPtr& link,
-				  ros::Time time,
 				  dhc::LinkState& link_state)	const	;
     
   private:

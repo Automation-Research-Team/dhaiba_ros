@@ -24,7 +24,8 @@ static dhc::Vec4
 position(const urdf::Pose& pose)
 {
     dhc::Vec4	vec;
-    vec.value() = {pose.position.x, pose.position.y, pose.position.z, 1};
+    vec.value() = {1000*pose.position.x, 1000*pose.position.y,
+		   1000*pose.position.z, 1};
 
     return vec;
 }
@@ -39,7 +40,8 @@ transform(const urdf::Pose& pose)
     mat.value() = {rx.x, rx.y, rx.z, 0,
 		   ry.x, ry.y, ry.z, 0,
 		   rz.x, rz.y, rz.z, 0,
-		   pose.position.x, pose.position.y, pose.position.z, 1};
+		   1000*pose.position.x, 1000*pose.position.y,
+		   1000*pose.position.z, 1};
 
     return mat;
 }
@@ -50,10 +52,10 @@ transform(const tf::Transform& trns)
     const auto&	R = trns.getBasis();
     const auto&	t = trns.getOrigin();
     dhc::Mat44	mat;
-    mat.value() = {R[0][0], R[1][0], R[2][0], 0,
-		   R[0][1], R[1][1], R[2][1], 0,
-		   R[0][2], R[1][2], R[2][2], 0,
-		   t.x(),   t.y(),   t.z(),   1};
+    mat.value() = {R[0][0],    R[1][0],    R[2][0],    0,
+		   R[0][1],    R[1][1],    R[2][1],    0,
+		   R[0][2],    R[1][2],    R[2][2],    0,
+		   1000*t.x(), 1000*t.y(), 1000*t.z(), 1};
 
     return mat;
 }
@@ -163,7 +165,7 @@ Bridge::run() const
     {
 	std::cerr << "-------------" << std::endl;
 	dhc::LinkState	link_state;
-	create_link_state(_root_link, ros::Time::now(), link_state);
+	create_link_state(_root_link, link_state);
 	_link_state_pub->write(&link_state);
 
 	ros::spinOnce();
@@ -241,17 +243,15 @@ Bridge::create_armature(const urdf::LinkConstSharedPtr& link,
     
 void
 Bridge::create_link_state(const urdf::LinkConstSharedPtr& link,
-			  ros::Time time, dhc::LinkState& link_state) const
+			  dhc::LinkState& link_state) const
 {
     for (const auto& child_link : link->child_links)
     {
 	try
 	{
-	    _listener.waitForTransform(_root_link->name, child_link->name,
-				       time, ros::Duration(10));
 	    tf::StampedTransform	stampedTransform;
 	    _listener.lookupTransform(_root_link->name, child_link->name,
-				      time, stampedTransform);
+				      ros::Time(0), stampedTransform);
 	    link_state.value().push_back(transform(stampedTransform));
 
 	    std::cerr << "create state of link[" << child_link->name << ']'
@@ -263,7 +263,7 @@ Bridge::create_link_state(const urdf::LinkConstSharedPtr& link,
 			     << child_link->name << "]. " << err.what());
 	}
 
-	create_link_state(child_link, time, link_state);
+	create_link_state(child_link, link_state);
     }
 }
 
