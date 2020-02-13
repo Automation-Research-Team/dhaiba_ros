@@ -8,6 +8,27 @@
 namespace dhaiba_ros
 {
 /************************************************************************
+*  global functions							*
+************************************************************************/
+std::ostream&
+operator <<(std::ostream& out, const urdf::Vector3& v)
+{
+    return out << v.x << ' ' << v.y << ' ' << v.z;
+}
+
+std::ostream&
+operator <<(std::ostream& out, const urdf::Rotation& q)
+{
+    return out << q.x << ' ' << q.y << ' ' << q.z << ' ' << q.w;
+}
+
+std::ostream&
+operator <<(std::ostream& out, const urdf::Pose& pose)
+{
+    return out << pose.position << ';' << pose.rotation;
+}
+
+/************************************************************************
 *  static functions							*
 ************************************************************************/
 static urdf::Pose
@@ -29,7 +50,7 @@ position(const urdf::Pose& pose)
 
     return vec;
 }
-    
+
 static dhc::Mat44
 transform(const urdf::Pose& pose)
 {
@@ -45,7 +66,7 @@ transform(const urdf::Pose& pose)
 
     return mat;
 }
-    
+
 static dhc::Mat44
 transform(const tf::Transform& trns)
 {
@@ -59,7 +80,7 @@ transform(const tf::Transform& trns)
 
     return mat;
 }
-    
+
 /************************************************************************
 *  class Bridge								*
 ************************************************************************/
@@ -86,7 +107,7 @@ Bridge::Bridge(const std::string& name)
 			 << description_param << ']');
 	throw;
     }
-	
+
     _model = urdf::parseURDF(description_xml);
     if (!_model)
     {
@@ -129,7 +150,7 @@ Bridge::Bridge(const std::string& name)
 	ROS_ERROR_STREAM("(dhaiba_ros_bridge) Failed to create publisher for armature.");
 	throw;
     }
-    
+
   // Create publisher for link state.
     _link_state_pub = _manager->createPublisher("DhaibaRos.LinkState",
 						"dhc::LinkState",
@@ -139,7 +160,7 @@ Bridge::Bridge(const std::string& name)
 	ROS_ERROR_STREAM("(dhaiba_ros_bridge) Failed to create publisher for link state.");
 	throw;
     }
-    
+
   // Register call back for armature pulblisher.
     Connections::connect(&_armature_pub->matched,
 			 {[this](DhaibaConnect::PublisherInfo* pub,
@@ -151,7 +172,7 @@ Bridge::Bridge(const std::string& name)
 			      pub->write(&armature);
 			  }});
     std::cerr << "\n-------" << std::endl;
-    
+
     ROS_INFO_STREAM("(dhaiba_ros_bridge) Node \""
 		    << name << "\" initialized.");
 }
@@ -160,7 +181,7 @@ void
 Bridge::run() const
 {
     ros::Rate	looprate(_rate);
-    
+
     while (ros::ok())
     {
 	std::cerr << "-------------" << std::endl;
@@ -185,7 +206,7 @@ Bridge::create_armature(const urdf::LinkConstSharedPtr& link,
 	{
 	    const auto	pose	 = visual->origin;
 	    const auto	geometry = visual->geometry;
-	    
+
 	    switch (geometry->type)
 	    {
 	      case urdf::Geometry::SPHERE:
@@ -206,7 +227,7 @@ Bridge::create_armature(const urdf::LinkConstSharedPtr& link,
 	    const auto	material = visual->material;
 	}
     }
-    
+
     for (const auto& child_link : link->child_links)
     {
 	const auto
@@ -225,7 +246,7 @@ Bridge::create_armature(const urdf::LinkConstSharedPtr& link,
 			     << link->name << "].");
 	    throw;
 	}
-	
+
 
 	const auto
 	    child_pose = (*child_joint)->parent_to_joint_origin_transform
@@ -237,10 +258,21 @@ Bridge::create_armature(const urdf::LinkConstSharedPtr& link,
 	armature_link.tailPosition0()	= position(child_pose);
 	armature.links().push_back(armature_link);
 
+	std::cout << "--------------------" << std::endl;
+	std::cout << (*child_joint)->parent_link_name << "<=="
+		  << (*child_joint)->child_link_name  << ":("
+		  << (*child_joint)->parent_to_joint_origin_transform
+		  << std::endl;
+	std::cout << (*child_joint)->parent_link_name << "<=="
+		  << _root_link << ":("
+		  << child_pose
+		  << std::endl;
+
+
 	create_armature(child_link, child_pose, armature);
     }
 }
-    
+
 void
 Bridge::create_link_state(const urdf::LinkConstSharedPtr& link,
 			  dhc::LinkState& link_state) const
@@ -254,7 +286,7 @@ Bridge::create_link_state(const urdf::LinkConstSharedPtr& link,
 				      ros::Time(0), stampedTransform);
 	    link_state.value().push_back(transform(stampedTransform));
 
-	    std::cerr << "create state of link[" << child_link->name << ']'
+	    std::cout << "create state of link[" << child_link->name << ']'
 		      << std::endl;
 	}
 	catch (const std::exception& err)
