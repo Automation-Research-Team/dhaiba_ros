@@ -18,13 +18,27 @@ find_package(catkin REQUIRED
     tf
 )
 
+set(CMAKE_MODULE_PATH $ENV{CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR})
+find_package(DhaibaConnectN REQUIRED)
+if (${DhaibaConnectN_FOUND})
+  message(STATUS "DhaibaConnectN found")
+  message(STATUS "DhaibaConnectN_INCLUDE_DIR: ${DhaibaConnectN_INCLUDE_DIR}")
+  message(STATUS "DhaibaConnectN_LIBRARY: ${DhaibaConnectN_LIBRARY}")
+else()
+  set( DhaibaConnectN_INCLUDE_DIR /usr/local/include/Dhaiba )
+  set( DhaibaConnectN_LIBRARY DhaibaConnectN )
+  message(STATUS "DhaibaConnectN not found")
+  message(STATUS "DhaibaConnectN_INCLUDE_DIR: ${DhaibaConnectN_INCLUDE_DIR}")
+  message(STATUS "DhaibaConnectN_LIBRARY: ${DhaibaConnectN_LIBRARY}")
+endif()
+
 ###########
 ## Build ##
 ###########
 include_directories(
   ${catkin_INCLUDE_DIRS}
   ${URDFDOM_INCLUDE_DIRS}
-  /usr/local/include/Dhaiba
+  ${DhaibaConnectN_INCLUDE_DIR}
 )
 
 catkin_package(
@@ -47,7 +61,7 @@ target_link_libraries(${PROJECT_NAME}_bridge
   ${catkin_LIBRARIES}
   ${roscpp_LIBRARIES}
   ${URDFDOM_LIBRARIES}
-  DhaibaConnectN
+  ${DhaibaConnectN_LIBRARY}
 )
 
 #############
