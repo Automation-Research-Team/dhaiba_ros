@@ -1,10 +1,16 @@
 /*!
-* \file                Bridge.cpp
-* \author        Toshio UESHIBA
-* \brief        Bridge software betwenn ROS and DhaibaWorks
+*  \file	Bridge.cpp
+*  \author	Toshio UESHIBA
+*  \brief	Bridge software betwenn ROS and DhaibaWorks
 */
-#include "Bridge.h"
+#include <ros/ros.h>
+#include <tf/transform_listener.h>
+#include <urdf_parser/urdf_parser.h>
+#include <DhaibaConnectN/Common.h>
+#include <DhaibaConnectN/idl/TopicDataTypeCore.h>
 
+#include <string>
+#include <map>
 #include <regex>
 
 namespace dhaiba_ros
@@ -34,7 +40,8 @@ std::ostream&
 operator <<(std::ostream& out, const tf::Vector3& v)
 {
     return out << '['
-        << v.x() << ' ' << v.y() << ' ' << v.z() << ' ' << v.w() << ']';
+	       << v.x() << ' ' << v.y() << ' ' << v.z() << ' ' << v.w()
+	       << ']';
 }
 
 std::ostream&
@@ -58,14 +65,15 @@ std::ostream&
 operator <<(std::ostream& out, const tf::Quaternion& q)
 {
     return out << '['
-        << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w() << ']';
+	       << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w()
+	       << ']';
 }
 
 std::ostream&
 operator <<(std::ostream& out, const tf::Transform& trns)
 {
     const tf::Matrix3x3& R = trns.getBasis();
-    const tf::Vector3& t = trns.getOrigin();
+    const tf::Vector3&	 t = trns.getOrigin();
     const tf::Quaternion q = trns.getRotation();
     return out << "basis["        << trns.getBasis()
                << "] origin["     << trns.getOrigin()
@@ -77,21 +85,22 @@ operator <<(std::ostream& out, const dhc::Vec4& v)
 {
     const auto arr = v.value();
     return out << '['
-        << arr[0] << ' ' << arr[1] << ' ' << arr[2] << ' ' << arr[3] << ']';
+	       << arr[0] << ' ' << arr[1] << ' ' << arr[2] << ' ' << arr[3]
+	       << ']';
 }
 
 std::ostream&
-operator <<(std::ostream& out, const dhc::Mat44 mat)
+operator <<(std::ostream& out, const dhc::Mat44& mat)
 {
     return out << '['
-        << mat.value()[0]  << ", " << mat.value()[1]  << ", "
-        << mat.value()[2]  << ", " << mat.value()[3]  << ", "
-        << mat.value()[4]  << ", " << mat.value()[5]  << ", "
-        << mat.value()[6]  << ", " << mat.value()[7]  << ", "
-        << mat.value()[8]  << ", " << mat.value()[9]  << ", "
-        << mat.value()[10] << ", " << mat.value()[11] << ", "
-        << mat.value()[12] << ", " << mat.value()[13] << ", "
-        << mat.value()[14] << ", " << mat.value()[15] << ']';
+	       << mat.value()[0]  << ", " << mat.value()[1]  << ", "
+	       << mat.value()[2]  << ", " << mat.value()[3]  << ", " << '\n'
+	       << mat.value()[4]  << ", " << mat.value()[5]  << ", "
+	       << mat.value()[6]  << ", " << mat.value()[7]  << ", " << '\n'
+	       << mat.value()[8]  << ", " << mat.value()[9]  << ", "
+	       << mat.value()[10] << ", " << mat.value()[11] << ", " << '\n'
+	       << mat.value()[12] << ", " << mat.value()[13] << ", "
+	       << mat.value()[14] << ", " << mat.value()[15] << ']';
 }
 
 /************************************************************************
@@ -137,7 +146,6 @@ transform(const urdf::Pose& pose)
     return mat;
 }
 
-#if 0
 static dhc::Mat44
 transform(const tf::Transform& trns)
 {
@@ -150,23 +158,20 @@ transform(const tf::Transform& trns)
                    1000*t.x(), 1000*t.y(), 1000*t.z(), 1};
     return mat;
 }
-#endif
 
 static tf::Transform
 urdf2tf(const urdf::Pose& pose)
 {
-    tf::Transform result(
-        tf::Quaternion(
-            pose.rotation.x, pose.rotation.y, pose.rotation.z, pose.rotation.w),
-        tf::Vector3(pose.position.x, pose.position.y, pose.position.z)
-        );
-
-    return result;
+    return tf::Transform(tf::Quaternion(pose.rotation.x, pose.rotation.y,
+					pose.rotation.z, pose.rotation.w),
+			 tf::Vector3(pose.position.x,
+				     pose.position.y, pose.position.z));
 }
 
 static dhc::Mat44
-transform2(const tf::Transform& child_trans, const tf::Transform& parent_trans,
-    const tf::Transform& child_init, const tf::Transform& parent_init)
+transform2(const tf::Transform& child_trans,
+	   const tf::Transform& parent_trans,
+	   const tf::Transform& child_init, const tf::Transform& parent_init)
 {
     ROS_DEBUG_STREAM("transform2: "
       << "\nchild_init  " << child_init << "\nchild_trans " << child_trans
@@ -228,8 +233,41 @@ transform2(const tf::Transform& child_trans, const tf::Transform& parent_trans,
 }
 
 /************************************************************************
-*  class Bridge                                                                *
+*  class Bridge                                                         *
 ************************************************************************/
+class Bridge
+{
+  public:
+    Bridge(const std::string& name);
+    void run() const;
+
+  private:
+    void create_armature(const urdf::LinkConstSharedPtr& link,
+                         const urdf::Pose& pose,
+                         dhc::Armature& armature) const;
+    void create_link_state(const urdf::LinkConstSharedPtr& link,
+                           dhc::LinkState& link_state,
+                           const tf::Transform trns) const;
+    bool exist_tf(
+            const std::string& parent_link_name,
+            const std::string& child_link_name
+            );
+
+  private:
+    ros::NodeHandle                      _nh;
+    const tf::TransformListener          _listener;
+    double                               _rate;
+
+    urdf::ModelInterfaceSharedPtr        _model;
+    urdf::LinkConstSharedPtr             _root_link;
+    
+    DhaibaConnect::Manager* const        _manager;
+    DhaibaConnect::PublisherInfo*        _armature_pub;
+    DhaibaConnect::PublisherInfo*        _link_state_pub;
+
+    std::map<std::string, tf::Transform> _init_tf;
+};
+
 Bridge::Bridge(const std::string& name)
     :_nh(name),
      _listener(),
@@ -242,7 +280,7 @@ Bridge::Bridge(const std::string& name)
 {
     _nh.param("rate", _rate, 10.0);
 
-    // Load robot model described in URDF.
+  // Load robot model described in URDF.
     std::string description_param;
     _nh.param("description_param", description_param,
               std::string("/robot_description"));
@@ -262,11 +300,11 @@ Bridge::Bridge(const std::string& name)
         throw;
     }
 
-    // Get all links in the model.
+  // Get all links in the model.
     std::vector<urdf::LinkSharedPtr> links;
     _model->getLinks(links);
 
-    // Set root link from root frame name.
+  // Set root link from root frame name.
     std::string root_frame;
     _nh.param("root_frame", root_frame, std::string("world"));
     const auto root_link = std::find_if(links.cbegin(), links.cend(),
@@ -280,34 +318,32 @@ Bridge::Bridge(const std::string& name)
     }
     else
         _root_link = *root_link;
-    _root_link = (root_link != links.cend() ? *root_link : _model->getRoot());
     ROS_INFO_STREAM("(dhaiba_ros_bridge) Set root frame to \""
                     << _root_link->name << "\".");
 
     {
-        // for _init_tf
+      // for _init_tf
         dhc::Armature dummy;
         create_armature(_root_link, urdf::Pose(), dummy);
     }
 
-    // Initialize manager.
-    std::string participant_name = std::regex_replace(
-                                _nh.getNamespace(), std::regex("/"), "");
+  // Initialize manager.
+    std::string participant_name = std::regex_replace(_nh.getNamespace(),
+						      std::regex("/"), "");
     ROS_DEBUG_STREAM("name[" << name << "]["
-                    << _nh.getNamespace() << "][" << participant_name << "]");
+		     << _nh.getNamespace() << "][" << participant_name << "]");
     _manager->initialize(participant_name);
 
-    // Create publisher for armature.
+  // Create publisher for armature.
     _armature_pub = _manager->createPublisher("DhaibaRos.Armature::Definition",
                                               "dhc::Armature", false, true);
     if (!_armature_pub)
     {
-        ROS_ERROR_STREAM(
-            "(dhaiba_ros_bridge) Failed to create publisher for armature.");
+        ROS_ERROR_STREAM("(dhaiba_ros_bridge) Failed to create publisher for armature.");
         throw;
     }
 
-    // Create publisher for link state.
+  // Create publisher for link state.
     _link_state_pub = _manager->createPublisher("DhaibaRos.Armature::LinkState",
                                                 "dhc::LinkState",
                                                 false, false);
@@ -318,7 +354,7 @@ Bridge::Bridge(const std::string& name)
         throw;
     }
 
-    // Register call back for armature pulblisher.
+  // Register callback for armature pulblisher.
     Connections::connect(&_armature_pub->matched,
                          {[this](DhaibaConnect::PublisherInfo* pub,
                                  DhaibaConnect::MatchingInfo* info)
@@ -340,12 +376,11 @@ Bridge::run() const
 
     while (ros::ok())
     {
-#if 1
         dhc::LinkState link_state;
         create_link_state(_root_link, link_state, tf::Transform());
         if (! link_state.value().empty())
             _link_state_pub->write(&link_state);
-#endif
+
         ros::spinOnce();
         looprate.sleep();
     }
@@ -389,18 +424,21 @@ Bridge::create_armature(const urdf::LinkConstSharedPtr& link,
 
     if (_root_link->name == link->name)
     {
-        ROS_DEBUG_STREAM("create_armature: _init_tf clear [" << link->name << "]");
+        ROS_DEBUG_STREAM("create_armature: _init_tf clear ["
+			 << link->name << "]");
         _init_tf.clear();
     }
     if (_init_tf.find(link->name) == _init_tf.end())
     {
-        ROS_DEBUG_STREAM("create_armature: _init_tf add [" << link->name << "]");
+        ROS_DEBUG_STREAM("create_armature: _init_tf add ["
+			 << link->name << "]");
         _init_tf[link->name] = urdf2tf(pose);
     }
 
     for (const auto& child_link : link->child_links)
     {
-        ROS_DEBUG_STREAM("create_armature: child_link[" << child_link->name << "]");
+        ROS_DEBUG_STREAM("create_armature: child_link["
+			 << child_link->name << "]");
         const auto
             child_joint = std::find_if(link->child_joints.cbegin(),
                                        link->child_joints.cend(),
@@ -411,22 +449,15 @@ Bridge::create_armature(const urdf::LinkConstSharedPtr& link,
                                        });
         if (child_joint == link->child_joints.cend())
         {
-            ROS_ERROR_STREAM(
-                "(dhaiba_ros_bridge) Internal inconsistency! Child link["
-                << child_link->name
-                << "] is not found in child joints of link["
-                << link->name << "].");
+            ROS_ERROR_STREAM("(dhaiba_ros_bridge) Internal inconsistency! Child link["
+			     << child_link->name
+			     << "] is not found in child joints of link["
+			     << link->name << "].");
             throw;
         }
 
-#if 0
-        const auto
-            child_pose = (*child_joint)->parent_to_joint_origin_transform
-                       * pose;
-#else
         const auto child_pose = pose
-                        * (*child_joint)->parent_to_joint_origin_transform;
-#endif
+			* (*child_joint)->parent_to_joint_origin_transform;
 
         _init_tf[(*child_joint)->child_link_name] = urdf2tf(child_pose);
 
@@ -450,8 +481,8 @@ Bridge::create_armature(const urdf::LinkConstSharedPtr& link,
 }
 
 bool
-Bridge::exist_tf(
-        const std::string& parent_link_name, const std::string& child_link_name)
+Bridge::exist_tf(const std::string& parent_link_name,
+		 const std::string& child_link_name)
 {
     if (_init_tf.find(parent_link_name) == _init_tf.end())
     {
@@ -471,43 +502,19 @@ Bridge::create_link_state(const urdf::LinkConstSharedPtr& link,
                           dhc::LinkState& link_state,
                           const tf::Transform trns) const
 {
-    tf::StampedTransform stampedTransform, trans;
-
     for (const auto& child_link : link->child_links)
     {
+	tf::StampedTransform stampedTransform;
+	
         try
         {
             _listener.lookupTransform(_root_link->name, child_link->name,
                                       ros::Time(0), stampedTransform);
             ROS_DEBUG_STREAM("create_link_state: "
-                << _root_link->name << " "
-                << child_link->name << " "
-                << stampedTransform);
-#if 0
-            _listener.lookupTransform(
-                        _root_link->name, child_link->getParent()->name,
-                        ros::Time(0), trans);
-#endif
-
-#if 0
+			     << _root_link->name << " <-- "
+			     << child_link->name << '\n'
+			     << transform(stampedTransform));
             link_state.value().push_back(transform(stampedTransform));
-#else
-
-            if (! exist_tf(child_link->getParent()->name, child_link->name))
-            {
-                ROS_ERROR_STREAM(
-                    "create_link_state: not exists in init_tf ["
-                        << child_link->getParent()->name
-                        << "][" << child_link->name << "]");
-                link_state.value().clear();
-                break;
-            }
-            link_state.value().push_back(transform2(
-                                stampedTransform, trns,
-                                _init_tf[child_link->name],
-                                _init_tf[child_link->getParent()->name]
-                                ));
-#endif
         }
         catch (const std::exception& err)
         {
@@ -517,8 +524,37 @@ Bridge::create_link_state(const urdf::LinkConstSharedPtr& link,
             link_state.value().clear();
             break;
         }
-        create_link_state(child_link, link_state, stampedTransform);
+
+	create_link_state(child_link, link_state, stampedTransform);
     }
 }
 
 }        // namespace dhaiba_ros
+
+/************************************************************************
+*  main function                                                        *
+************************************************************************/
+int
+main(int argc, char** argv)
+{
+    ros::init(argc, argv, "dhaiba_ros_bridge");
+    ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME,
+                                   ros::console::levels::Debug);
+
+    try
+    {
+        const dhaiba_ros::Bridge        bridge("~");
+        bridge.run();
+    }
+    catch (const std::exception& err)
+    {
+        std::cerr << err.what() << std::endl;
+        return 1;
+    }
+    catch (...)
+    {
+        return 1;
+    }
+
+    return 0;
+}

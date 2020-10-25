@@ -48,8 +48,7 @@ catkin_package(
 )
 
 add_executable(${PROJECT_NAME}_bridge
-  src/main.cpp
-  src/Bridge.cpp
+  src/dhaiba_ros_bridge.cpp
 )
 
 add_dependencies(${PROJECT_NAME}_bridge
