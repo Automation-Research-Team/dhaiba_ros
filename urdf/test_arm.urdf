@@ -40,7 +40,7 @@
     <!-- joint1 and ink1 -->
     <joint name="joint1" type="revolute">
       <axis xyz="0 0 1" rpy="0 0 0" />
-      <limit lower="${-pi/2}" upper="${pi/2}"
+      <limit lower="${-pi}" upper="${pi}"
 	     effort="100.0" velocity="${radians(100)}"/>
       <origin xyz="0 0 ${link0_height}" rpy="0 0 0" />
       <parent link="link0"/>
