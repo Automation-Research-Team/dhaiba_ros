@@ -183,7 +183,8 @@ class Bridge
     ros::NodeHandle			_nh;
     const tf::TransformListener		_listener;
     double				_rate;
-
+    bool				_pub;
+    
     urdf::ModelInterfaceSharedPtr	_model;
     urdf::LinkConstSharedPtr		_root_link;
     
@@ -203,6 +204,7 @@ Bridge::Bridge(const std::string& name)
      _link_state_pub(nullptr)
 {
     _nh.param("rate", _rate, 10.0);
+    _nh.param("pub",  _pub,  true);
 
   // Load robot model described in URDF.
     std::string	description_param;
@@ -266,9 +268,10 @@ Bridge::Bridge(const std::string& name)
                          {[this](DhaibaConnect::PublisherInfo* pub,
                                  DhaibaConnect::MatchingInfo* info)
                           {
-                              dhc::Armature        armature;
-                              create_armature(_root_link, urdf::Pose(),
-                                              armature);
+                              dhc::Armature	armature;
+			      urdf::Pose	pose;
+			      pose.rotation.setFromQuaternion(0, 0, 0, 1);
+                              create_armature(_root_link, pose, armature);
                               pub->write(&armature);
                           }});
 
@@ -296,8 +299,8 @@ Bridge::run() const
     {
         dhc::LinkState link_state;
         create_link_state(_root_link, link_state);
-        if (! link_state.value().empty())
-            _link_state_pub->write(&link_state);
+        if (_pub && ! link_state.value().empty())
+	    _link_state_pub->write(&link_state);
 
         ros::spinOnce();
         looprate.sleep();
@@ -365,16 +368,14 @@ Bridge::create_armature(const urdf::LinkConstSharedPtr& link,
         armature_link.linkName()       = (*child_joint)->child_link_name;
         armature_link.parentLinkName() = (*child_joint)->parent_link_name;
         armature_link.Twj0()           = transform(child_pose);
-        armature_link.tailPosition0()  = position(pose);
+        armature_link.tailPosition0()  = position(child_pose);
         armature.links().push_back(armature_link);
 
         ROS_DEBUG_STREAM("create_armature: "
 			 << (*child_joint)->parent_link_name << " <== "
-			 << (*child_joint)->child_link_name << "\n("
-			 << (*child_joint)->parent_to_joint_origin_transform
-			 << ") (" << child_pose
-			 << ")\n(" << armature_link.Twj0()
-			 << ") (" << armature_link.tailPosition0() << ")");
+			 << (*child_joint)->child_link_name
+			 << "\n  Twj0:  " << armature_link.Twj0()
+			 << "\n  tail0: " << armature_link.tailPosition0());
 
         create_armature(child_link, child_pose, armature);
     }
