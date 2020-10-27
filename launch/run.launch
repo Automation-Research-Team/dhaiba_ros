@@ -4,14 +4,12 @@
   <arg name="rate"		default="10.0"/>
   <arg name="description_param"	default="/robot_description"/>
   <arg name="root_frame"	default="world"/>
-  <arg name="pub"		default="true"/>
     
   <node name="dhaiba_ros_bridge" pkg="dhaiba_ros" type="dhaiba_ros_bridge"
   	output="screen">
     <param name="rate"			value="$(arg rate)"/>
     <param name="description_param"	value="$(arg description_param)"/>
     <param name="root_frame"		value="$(arg root_frame)"/>
-    <param name="pub"			value="$(arg pub)"/>
   </node>
 
 </launch>

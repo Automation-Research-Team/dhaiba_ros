@@ -106,49 +106,25 @@ operator <<(std::ostream& out, const dhc::Mat44& mat)
 /************************************************************************
 *  static functions							*
 ************************************************************************/
-static urdf::Pose
-operator *(const urdf::Pose& a, const urdf::Pose& b)
+static tf::Transform
+transform(const urdf::Pose& pose)
 {
-    urdf::Pose result;
-    result.position = a.rotation * b.position + a.position;
-    result.rotation = a.rotation * b.rotation;
-    return result;
+    return tf::Transform(tf::Quaternion(pose.rotation.x, pose.rotation.y,
+					pose.rotation.z, pose.rotation.w),
+			 tf::Vector3(pose.position.x,
+				     pose.position.y, pose.position.z));
 }
-
+    
 static dhc::Vec4
-position(const urdf::Pose& pose)
+vec4(const tf::Vector3& origin)
 {
-    dhc::Vec4 vec;
-    vec.value() = {1000*pose.position.x, 1000*pose.position.y,
-                   1000*pose.position.z, 1};
+    dhc::Vec4	vec;
+    vec.value() = {1000*origin.x(), 1000*origin.y(), 1000*origin.z(), 1};
     return vec;
 }
 
 static dhc::Mat44
-transform(const urdf::Pose& pose)
-{
-    const auto rx = pose.rotation * urdf::Vector3(1, 0, 0);
-    const auto ry = pose.rotation * urdf::Vector3(0, 1, 0);
-    const auto rz = pose.rotation * urdf::Vector3(0, 0, 1);
-    dhc::Mat44 mat;
-#if 1
-    mat.value() = {rx.x, rx.y, rx.z, 0,
-		   ry.x, ry.y, ry.z, 0,
-		   rz.x, rz.y, rz.z, 0,
-		   1000*pose.position.x, 1000*pose.position.y,
-		   1000*pose.position.z, 1};
-#else
-    mat.value() = {rx.x, ry.x, rz.x, 0,
-		   rx.y, ry.y, rz.y, 0,
-		   rx.z, ry.z, rz.z, 0,
-		   1000*pose.position.x, 1000*pose.position.y,
-		   1000*pose.position.z, 1};
-#endif
-    return mat;
-}
-
-static dhc::Mat44
-transform(const tf::Transform& trns)
+mat44(const tf::Transform& trns)
 {
     const auto&	R = trns.getBasis();
     const auto&	t = trns.getOrigin();
@@ -172,7 +148,7 @@ class Bridge
 
   private:
     void	create_armature(const urdf::LinkConstSharedPtr& link,
-				const urdf::Pose& pose,
+				const tf::Transform& trns,
 				dhc::Armature& armature)	const	;
     void	create_link_state(const urdf::LinkConstSharedPtr& link,
 				  dhc::LinkState& link_state)	const	;
@@ -180,17 +156,17 @@ class Bridge
 			 const std::string& child_link_name)		;
 
   private:
-    ros::NodeHandle			_nh;
-    const tf::TransformListener		_listener;
-    double				_rate;
-    bool				_pub;
+    ros::NodeHandle				_nh;
+    const tf::TransformListener			_listener;
+    double					_rate;
     
-    urdf::ModelInterfaceSharedPtr	_model;
-    urdf::LinkConstSharedPtr		_root_link;
+    urdf::ModelInterfaceSharedPtr		_model;
+    urdf::LinkConstSharedPtr			_root_link;
+    std::map<std::string, tf::Transform>	_Rinv0;
     
-    DhaibaConnect::Manager* const	_manager;
-    DhaibaConnect::PublisherInfo*	_armature_pub;
-    DhaibaConnect::PublisherInfo*	_link_state_pub;
+    DhaibaConnect::Manager* const		_manager;
+    DhaibaConnect::PublisherInfo*		_armature_pub;
+    DhaibaConnect::PublisherInfo*		_link_state_pub;
 };
 
 Bridge::Bridge(const std::string& name)
@@ -199,12 +175,12 @@ Bridge::Bridge(const std::string& name)
      _rate(10.0),
      _model(),
      _root_link(),
+     _Rinv0(),
      _manager(DhaibaConnect::Manager::instance()),
      _armature_pub(nullptr),
      _link_state_pub(nullptr)
 {
     _nh.param("rate", _rate, 10.0);
-    _nh.param("pub",  _pub,  true);
 
   // Load robot model described in URDF.
     std::string	description_param;
@@ -269,9 +245,11 @@ Bridge::Bridge(const std::string& name)
                                  DhaibaConnect::MatchingInfo* info)
                           {
                               dhc::Armature	armature;
-			      urdf::Pose	pose;
-			      pose.rotation.setFromQuaternion(0, 0, 0, 1);
-                              create_armature(_root_link, pose, armature);
+                              create_armature(_root_link,
+					      tf::Transform(
+						  {0.0, 0.0, 0.0, 1.0},
+						  {0.0, 0.0, 0.0}),
+					      armature);
                               pub->write(&armature);
                           }});
 
@@ -286,8 +264,7 @@ Bridge::Bridge(const std::string& name)
         throw;
     }
 
-    std::cout << "\n-----\n";
-    ROS_INFO_STREAM("(dhaiba_ros_bridge) Node \"" << name << "\" initialized.");
+    ROS_INFO_STREAM("(dhaiba_ros_bridge) Node[" << name << "] initialized.");
 }
 
 void
@@ -299,7 +276,7 @@ Bridge::run() const
     {
         dhc::LinkState link_state;
         create_link_state(_root_link, link_state);
-        if (_pub && ! link_state.value().empty())
+        if (! link_state.value().empty())
 	    _link_state_pub->write(&link_state);
 
         ros::spinOnce();
@@ -309,7 +286,8 @@ Bridge::run() const
 
 void
 Bridge::create_armature(const urdf::LinkConstSharedPtr& link,
-                        const urdf::Pose& pose, dhc::Armature& armature) const
+                        const tf::Transform& trns,
+			dhc::Armature& armature) const
 {
     if (link->visual)
     {
@@ -361,23 +339,23 @@ Bridge::create_armature(const urdf::LinkConstSharedPtr& link,
             throw;
         }
 
-	const auto	child_local_pose
-			    = (*child_joint)->parent_to_joint_origin_transform;
-	const auto	child_pose = pose * child_local_pose;
+	const auto	local_trns = transform((*child_joint)
+					->parent_to_joint_origin_transform);
+	const auto	child_trns = trns * local_trns;
         dhc::Link	armature_link;
         armature_link.linkName()       = (*child_joint)->child_link_name;
         armature_link.parentLinkName() = (*child_joint)->parent_link_name;
-        armature_link.Twj0()           = transform(child_pose);
-        armature_link.tailPosition0()  = position(child_pose);
+        armature_link.Twj0()           = mat44(child_trns);
+        armature_link.tailPosition0()  = vec4(child_trns.getOrigin());
         armature.links().push_back(armature_link);
 
-        ROS_DEBUG_STREAM("create_armature: "
-			 << (*child_joint)->parent_link_name << " <== "
-			 << (*child_joint)->child_link_name
-			 << "\n  Twj0:  " << armature_link.Twj0()
-			 << "\n  tail0: " << armature_link.tailPosition0());
+	_Rinv0[armature_link.linkName()] = local_trns.inverse();
 
-        create_armature(child_link, child_pose, armature);
+        ROS_DEBUG_STREAM("create_armature: " << _root_link->name
+			 << " <== "	     << armature_link.linkName()
+			 << "\n  Twj0:  "    << armature_link.Twj0());
+
+        create_armature(child_link, child_trns, armature);
     }
 }
 
@@ -389,21 +367,19 @@ Bridge::create_link_state(const urdf::LinkConstSharedPtr& link,
     {
         try
         {
-	    tf::StampedTransform stampedTransform;
+	    tf::StampedTransform	R;
             _listener.lookupTransform(link->name, child_link->name,
-                                      ros::Time(0), stampedTransform);
-            link_state.value().push_back(transform(stampedTransform));
+                                      ros::Time(0), R);
+            link_state.value().push_back(mat44(_Rinv0[child_link->name] * R));
 
-	    // ROS_DEBUG_STREAM("create_link_state: "
-	    // 		     << link->name << " <-- "
-	    // 		     << child_link->name << '\n'
-	    // 		     << transform(stampedTransform));
+	    ROS_DEBUG_STREAM("create_link_state: "
+	    		     << link->name << " <== " << child_link->name
+	    		     << '\n' << link_state.value().back());
         }
         catch (const std::exception& err)
         {
-            ROS_ERROR_STREAM(
-                "(dhaiba_ros_bridge): Failed to publish link state["
-                << child_link->name << "]. " << err.what());
+            ROS_ERROR_STREAM("(dhaiba_ros_bridge): Failed to publish link state["
+			     << child_link->name << "]. " << err.what());
             link_state.value().clear();
             break;
         }
