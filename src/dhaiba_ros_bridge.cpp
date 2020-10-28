@@ -148,7 +148,7 @@ class Bridge
 
   private:
     void	create_armature(const urdf::LinkConstSharedPtr& link,
-				const tf::Transform& trns,
+				const tf::Transform& Twp0,
 				dhc::Armature& armature)	const	;
     void	create_link_state(const urdf::LinkConstSharedPtr& link,
 				  dhc::LinkState& link_state)	const	;
@@ -286,7 +286,7 @@ Bridge::run() const
 
 void
 Bridge::create_armature(const urdf::LinkConstSharedPtr& link,
-                        const tf::Transform& trns,
+                        const tf::Transform& Twp0,
 			dhc::Armature& armature) const
 {
     if (link->visual)
@@ -339,23 +339,23 @@ Bridge::create_armature(const urdf::LinkConstSharedPtr& link,
             throw;
         }
 
-	const auto	local_trns = transform((*child_joint)
-					->parent_to_joint_origin_transform);
-	const auto	child_trns = trns * local_trns;
+	const auto	Tp0j0 = transform((*child_joint)
+				    ->parent_to_joint_origin_transform);
+	const auto	Twj0  = Twp0 * Tp0j0;
         dhc::Link	armature_link;
         armature_link.linkName()       = (*child_joint)->child_link_name;
         armature_link.parentLinkName() = (*child_joint)->parent_link_name;
-        armature_link.Twj0()           = mat44(child_trns);
-        armature_link.tailPosition0()  = vec4(child_trns.getOrigin());
+        armature_link.Twj0()           = mat44(Twj0);
+        armature_link.tailPosition0()  = vec4(Twj0.getOrigin());
         armature.links().push_back(armature_link);
 
-	_Tj0p0[armature_link.linkName()] = local_trns.inverse();
+	_Tj0p0[armature_link.linkName()] = Tp0j0.inverse();
 
         ROS_DEBUG_STREAM("create_armature: " << _root_link->name
 			 << " <== "	     << armature_link.linkName()
 			 << "\n  Twj0:  "    << armature_link.Twj0());
 
-        create_armature(child_link, child_trns, armature);
+        create_armature(child_link, Twj0, armature);
     }
 }
 
