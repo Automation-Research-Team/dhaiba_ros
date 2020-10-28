@@ -162,7 +162,7 @@ class Bridge
     
     urdf::ModelInterfaceSharedPtr		_model;
     urdf::LinkConstSharedPtr			_root_link;
-    std::map<std::string, tf::Transform>	_Rinv0;
+    std::map<std::string, tf::Transform>	_Tj0p0;
     
     DhaibaConnect::Manager* const		_manager;
     DhaibaConnect::PublisherInfo*		_armature_pub;
@@ -175,7 +175,7 @@ Bridge::Bridge(const std::string& name)
      _rate(10.0),
      _model(),
      _root_link(),
-     _Rinv0(),
+     _Tj0p0(),
      _manager(DhaibaConnect::Manager::instance()),
      _armature_pub(nullptr),
      _link_state_pub(nullptr)
@@ -349,7 +349,7 @@ Bridge::create_armature(const urdf::LinkConstSharedPtr& link,
         armature_link.tailPosition0()  = vec4(child_trns.getOrigin());
         armature.links().push_back(armature_link);
 
-	_Rinv0[armature_link.linkName()] = local_trns.inverse();
+	_Tj0p0[armature_link.linkName()] = local_trns.inverse();
 
         ROS_DEBUG_STREAM("create_armature: " << _root_link->name
 			 << " <== "	     << armature_link.linkName()
@@ -367,10 +367,10 @@ Bridge::create_link_state(const urdf::LinkConstSharedPtr& link,
     {
         try
         {
-	    tf::StampedTransform	R;
+	    tf::StampedTransform	Tpj;
             _listener.lookupTransform(link->name, child_link->name,
-                                      ros::Time(0), R);
-            link_state.value().push_back(mat44(_Rinv0[child_link->name] * R));
+                                      ros::Time(0), Tpj);
+            link_state.value().push_back(mat44(_Tj0p0[child_link->name]*Tpj));
 
 	    ROS_DEBUG_STREAM("create_link_state: "
 	    		     << link->name << " <== " << child_link->name
