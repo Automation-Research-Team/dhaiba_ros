@@ -41,6 +41,14 @@ set(SRC_SHAPEBOX3 trial_com.cpp shapebox3.cpp)
 add_executable(shapebox3 ${SRC_SHAPEBOX3})
 target_link_libraries(shapebox3 ${DhaibaConnectN_LIBRARY})
 
+set(SRC_SHAPESPHERE1 trial_com.cpp shapesphere1.cpp)
+add_executable(shapesphere1 ${SRC_SHAPESPHERE1})
+target_link_libraries(shapesphere1 ${DhaibaConnectN_LIBRARY})
+
+set(SRC_SHAPESPHERE2 trial_com.cpp shapesphere2.cpp)
+add_executable(shapesphere2 ${SRC_SHAPESPHERE2})
+target_link_libraries(shapesphere2 ${DhaibaConnectN_LIBRARY})
+
 set(SRC_STL1 trial_com.cpp stl1.cpp)
 add_executable(stl1 ${SRC_STL1})
 target_link_libraries(stl1 ${DhaibaConnectN_LIBRARY})

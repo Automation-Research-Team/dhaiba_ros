@@ -14,18 +14,18 @@ int main()
     double r = 0.0;
 
     Manager* manager = Manager::instance();
-    manager->initialize("shapebox3");
+    manager->initialize("shapesphere2");
 
     PublisherInfo* pub = manager->createPublisher(
-                "TrialShapebox3.Mesh::Definition",
-                "dhc::ShapeBox", false, true);
+                "TrialShapeSphere2.Mesh::Definition",
+                "dhc::ShapeSphere", false, true);
     Connections::connect(&pub->matched,
                 {[&](PublisherInfo* pub, MatchingInfo* info){
-                    shape_box(pub, r);
+                    shape_sphere(pub, r);
                 }});
 
     PublisherInfo* pub2 = manager->createPublisher(
-                "TrialShapebox3.PointSupplier::GeometryState",
+                "TrialShapeSphere2.PointSupplier::GeometryState",
                 "dhc::GeometryState", false, false);
 
     std::thread th([&]() {

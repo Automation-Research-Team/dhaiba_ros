@@ -80,7 +80,14 @@ void geometry_binary_file(
                 10+d, 20+d, 30+d, 0,
                 };
     pub->write(&data);
-    // std::cout << "geometry_binary_file: " << data.fileData().data().size() << std::endl;
+    std::cout << "geometry_binary_file: "
+            << data.fileData().data().size() << std::endl;
+    std::ofstream f;
+    f.open("/tmp/trial_data", std::ios_base::out | std::ios_base::binary);
+    auto size = data.fileData().data().size();
+    for (int i = 0; i < size; i++)
+        f.put(data.fileData().data()[i]);
+    f.close();
 }
 
 void shape_box(DhaibaConnect::PublisherInfo* pub, double r)
@@ -99,6 +106,27 @@ void shape_box(DhaibaConnect::PublisherInfo* pub, double r)
     data.translation().value() = { 10+d, 20+d, 30+d };
     data.scaling().value() = { 200, 300, 400 };
     data.divisionCount().value() = { 3, 3, 3 };
+    pub->write(&data);
+    // std::cout << "shape_box: " << std::endl;
+}
+
+void shape_sphere(DhaibaConnect::PublisherInfo* pub, double r)
+{
+    double d = 100.0 * sin(r);
+    dhc::ShapeSphere data;
+    data.baseInfo().transform().value() = {
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        10, 20, 30, 0,
+        };
+    data.baseInfo().color().r() = 0;
+    data.baseInfo().color().g() = 255;
+    data.baseInfo().color().b() = 0;
+    data.translation().value() = { 10+d, 20+d, 30+d };
+    data.scaling().value() = { 300, 300, 300 };
+    data.divisionCountU() = 10;
+    data.divisionCountV() = 10;
     pub->write(&data);
     // std::cout << "shape_box: " << std::endl;
 }
