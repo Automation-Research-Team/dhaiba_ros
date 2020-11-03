@@ -12,6 +12,7 @@
 #include <string>
 #include <map>
 #include <regex>
+#include <iomanip>
 
 namespace dhaiba_ros
 {
@@ -19,46 +20,18 @@ namespace dhaiba_ros
 *  global functions							*
 ************************************************************************/
 std::ostream&
-operator <<(std::ostream& out, const urdf::Vector3& v)
-{
-    return out << v.x << ' ' << v.y << ' ' << v.z;
-}
-
-std::ostream&
-operator <<(std::ostream& out, const urdf::Rotation& q)
-{
-    return out << q.x << ' ' << q.y << ' ' << q.z << ' ' << q.w;
-}
-
-std::ostream&
-operator <<(std::ostream& out, const urdf::Pose& pose)
-{
-    return out << '[' << pose.position << ';' << pose.rotation << ']';
-}
-
-std::ostream&
 operator <<(std::ostream& out, const tf::Vector3& v)
 {
-    return out << '['
-	       << v.x() << ' ' << v.y() << ' ' << v.z() << ' ' << v.w()
-	       << ']';
+    return out << '[' << v.x() << ' ' << v.y() << ' ' << v.z() << ']';
 }
 
 std::ostream&
 operator <<(std::ostream& out, const tf::Matrix3x3& m)
 {
-    for (int r = 0; r < 3; r++)
-    {
-	out << '[';
-	for (int c = 0; c < 3; c++)
-	{
-	    if (c > 0)
-		out << ' ';
-	    out << m[r][c];
-	}
-	out << ']';
-    }
-    return out;
+    return out << '['
+	       << m[0][0]  << ' ' << m[0][1]  << ' ' << m[0][2] << "\n "
+	       << m[1][0]  << ' ' << m[1][1]  << ' ' << m[1][2] << "\n "
+	       << m[2][0]  << ' ' << m[2][1]  << ' ' << m[2][2] << ']';
 }
 
 std::ostream&
@@ -75,9 +48,9 @@ operator <<(std::ostream& out, const tf::Transform& trns)
     const tf::Matrix3x3& R = trns.getBasis();
     const tf::Vector3&	 t = trns.getOrigin();
     const tf::Quaternion q = trns.getRotation();
-    return out << "basis["        << trns.getBasis()
-	       << "] origin["     << trns.getOrigin()
-	       << "] quaternion[" << trns.getRotation() << "]";
+    return out << "basis: "        << trns.getBasis()
+	       << "\norigin: "     << trns.getOrigin()
+	       << "\nquaternion: " << trns.getRotation();
 }
 
 std::ostream&
@@ -93,14 +66,14 @@ std::ostream&
 operator <<(std::ostream& out, const dhc::Mat44& mat)
 {
     return out << '['
-	       << mat.value()[0]  << ", " << mat.value()[1]  << ", "
-	       << mat.value()[2]  << ", " << mat.value()[3]  << ", " << '\n'
-	       << mat.value()[4]  << ", " << mat.value()[5]  << ", "
-	       << mat.value()[6]  << ", " << mat.value()[7]  << ", " << '\n'
-	       << mat.value()[8]  << ", " << mat.value()[9]  << ", "
-	       << mat.value()[10] << ", " << mat.value()[11] << ", " << '\n'
-	       << mat.value()[12] << ", " << mat.value()[13] << ", "
-	       << mat.value()[14] << ", " << mat.value()[15] << ']';
+	       << mat.value()[0]  << ' ' << mat.value()[1]  << ' '
+	       << mat.value()[2]  << ' ' << mat.value()[3]  << "\n "
+	       << mat.value()[4]  << ' ' << mat.value()[5]  << ' '
+	       << mat.value()[6]  << ' ' << mat.value()[7]  << "\n "
+	       << mat.value()[8]  << ' ' << mat.value()[9]  << ' '
+	       << mat.value()[10] << ' ' << mat.value()[11] << "\n "
+	       << mat.value()[12] << ' ' << mat.value()[13] << ' '
+	       << mat.value()[14] << ' ' << mat.value()[15] << ']';
 }
 
 /************************************************************************
@@ -109,12 +82,11 @@ operator <<(std::ostream& out, const dhc::Mat44& mat)
 static tf::Transform
 transform(const urdf::Pose& pose)
 {
-    return tf::Transform(tf::Quaternion(pose.rotation.x, pose.rotation.y,
-					pose.rotation.z, pose.rotation.w),
-			 tf::Vector3(pose.position.x,
-				     pose.position.y, pose.position.z));
+    return tf::Transform({pose.rotation.x, pose.rotation.y,
+    			  pose.rotation.z, pose.rotation.w},
+    			 {pose.position.x, pose.position.y, pose.position.z});
 }
-    
+
 static dhc::Vec4
 vec4(const tf::Vector3& origin)
 {
@@ -135,7 +107,7 @@ mat44(const tf::Transform& trns)
 		   1000*t.x(), 1000*t.y(), 1000*t.z(), 1};
     return mat;
 }
-    
+
 /************************************************************************
 *  class Bridge								*
 ************************************************************************/
@@ -159,11 +131,11 @@ class Bridge
     ros::NodeHandle				_nh;
     const tf::TransformListener			_listener;
     double					_rate;
-    
+
     urdf::ModelInterfaceSharedPtr		_model;
     urdf::LinkConstSharedPtr			_root_link;
     std::map<std::string, tf::Transform>	_Tj0p0;
-    
+
     DhaibaConnect::Manager* const		_manager;
     DhaibaConnect::PublisherInfo*		_armature_pub;
     DhaibaConnect::PublisherInfo*		_link_state_pub;
@@ -374,7 +346,8 @@ Bridge::create_link_state(const urdf::LinkConstSharedPtr& link,
 
 	    ROS_DEBUG_STREAM("create_link_state: "
 	    		     << link->name << " <== " << child_link->name
-	    		     << '\n' << link_state.value().back());
+	    		     << '\n' << std::fixed << std::setprecision(3)
+			     << link_state.value().back());
         }
         catch (const std::exception& err)
         {
