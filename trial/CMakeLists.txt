@@ -57,3 +57,11 @@ set(SRC_STL2 trial_com.cpp stl2.cpp)
 add_executable(stl2 ${SRC_STL2})
 target_link_libraries(stl2 ${DhaibaConnectN_LIBRARY})
 
+set(SRC_STL3 trial_com.cpp stl3.cpp)
+add_executable(stl3 ${SRC_STL3})
+target_link_libraries(stl3 ${DhaibaConnectN_LIBRARY})
+
+set(SRC_SUBSCRIBER subscriber.cpp)
+add_executable(subscriber ${SRC_SUBSCRIBER})
+target_link_libraries(subscriber ${DhaibaConnectN_LIBRARY})
+

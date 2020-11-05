@@ -15,6 +15,7 @@ void geometry_binary_file(
 void shape_box(DhaibaConnect::PublisherInfo* pub, double r);
 void shape_sphere(DhaibaConnect::PublisherInfo* pub, double r);
 void geometry_state(DhaibaConnect::PublisherInfo* pub, double r);
+void geometry_state2(DhaibaConnect::PublisherInfo* pub, double r);
 
 #endif  /* __TRIAL_COM_H__ */
 

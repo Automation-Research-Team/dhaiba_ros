@@ -35,12 +35,12 @@ int main(int argc, char *argv[])
                 }});
 
     PublisherInfo* pub2 = manager->createPublisher(
-                "TrialShapebox1.PointSupplier::GeometryState",
+                "TrialSTL1.PointSupplier::GeometryState",
                 "dhc::GeometryState", false, false);
 
     std::thread th([&]() {
         while(1){
-            geometry_state(pub2, r);
+            geometry_state2(pub2, r);
             std::this_thread::sleep_for(std::chrono::seconds(1));
             r += 0.1;
         }

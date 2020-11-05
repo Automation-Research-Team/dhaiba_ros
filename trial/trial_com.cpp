@@ -74,10 +74,10 @@ void geometry_binary_file(
     data.baseInfo().color().g() = 255;
     data.baseInfo().color().b() = 0;
     data.baseInfo().transform().value() = {
-                1, 0, 0, 0,
-                0, 1, 0, 0,
-                0, 0, 1, 0,
-                10+d, 20+d, 30+d, 0,
+                1000, 0, 0, 0,
+                0, 1000, 0, 0,
+                0, 0, 1000, 0,
+                10+d, 20+d, 30+d, 1,
                 };
     pub->write(&data);
     std::cout << "geometry_binary_file: "
@@ -140,6 +140,19 @@ void geometry_state(DhaibaConnect::PublisherInfo* pub, double r)
         0, 1, 0, 0,
         0, 0, 1, 0,
         d, d, d, 0
+        };
+    pub->write(&data);
+}
+
+void geometry_state2(DhaibaConnect::PublisherInfo* pub, double r)
+{
+    double d = 100.0 * sin(r);
+    dhc::GeometryState data;
+    data.transform().value() = {
+        1000, 0, 0, 0,
+        0, 1000, 0, 0,
+        0, 0, 1000, 0,
+        d, d, d, 1
         };
     pub->write(&data);
 }
