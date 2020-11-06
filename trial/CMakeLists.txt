@@ -33,33 +33,21 @@ set(SRC_SHAPEBOX1 trial_com.cpp shapebox1.cpp)
 add_executable(shapebox1 ${SRC_SHAPEBOX1})
 target_link_libraries(shapebox1 ${DhaibaConnectN_LIBRARY})
 
-set(SRC_SHAPEBOX2 trial_com.cpp shapebox2.cpp)
-add_executable(shapebox2 ${SRC_SHAPEBOX2})
-target_link_libraries(shapebox2 ${DhaibaConnectN_LIBRARY})
-
-set(SRC_SHAPEBOX3 trial_com.cpp shapebox3.cpp)
-add_executable(shapebox3 ${SRC_SHAPEBOX3})
-target_link_libraries(shapebox3 ${DhaibaConnectN_LIBRARY})
-
 set(SRC_SHAPESPHERE1 trial_com.cpp shapesphere1.cpp)
 add_executable(shapesphere1 ${SRC_SHAPESPHERE1})
 target_link_libraries(shapesphere1 ${DhaibaConnectN_LIBRARY})
-
-set(SRC_SHAPESPHERE2 trial_com.cpp shapesphere2.cpp)
-add_executable(shapesphere2 ${SRC_SHAPESPHERE2})
-target_link_libraries(shapesphere2 ${DhaibaConnectN_LIBRARY})
 
 set(SRC_STL1 trial_com.cpp stl1.cpp)
 add_executable(stl1 ${SRC_STL1})
 target_link_libraries(stl1 ${DhaibaConnectN_LIBRARY})
 
-set(SRC_STL2 trial_com.cpp stl2.cpp)
-add_executable(stl2 ${SRC_STL2})
-target_link_libraries(stl2 ${DhaibaConnectN_LIBRARY})
-
 set(SRC_STL3 trial_com.cpp stl3.cpp)
 add_executable(stl3 ${SRC_STL3})
 target_link_libraries(stl3 ${DhaibaConnectN_LIBRARY})
+
+set(SRC_MULTIPLE trial_com.cpp multiple.cpp)
+add_executable(multiple ${SRC_MULTIPLE})
+target_link_libraries(multiple ${DhaibaConnectN_LIBRARY})
 
 set(SRC_SUBSCRIBER subscriber.cpp)
 add_executable(subscriber ${SRC_SUBSCRIBER})

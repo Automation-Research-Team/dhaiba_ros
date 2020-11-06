@@ -36,19 +36,17 @@ bool loadSTL(const std::string& url, std::vector<char>& data)
 
     try {
         std::ifstream f;
-        char buf[1024];
         f.open(path, std::ios_base::in | std::ios_base::binary);
         if (!f) {
             std::cout << "loadSTL: (" << path << ") can not open" << std::endl;
             return false;
         }
-        while (! f.eof()) {
-            f.read(buf, 1024);
-            auto size = f.gcount();
-            // std::cout << "loadSTL: read size=" << size << std::endl;
-            for (int i = 0; i < size; i++)
-                data.push_back(buf[i]);
-        }
+        f.seekg(0, std::ios_base::end);
+        auto fsize = f.tellg();
+        f.seekg(0);
+        data.resize(fsize);
+        f.read(data.data(), fsize);
+        f.close();
         std::cout << "loadSTL: data size=" << data.size() << std::endl;
     } catch (const std::exception& e) {
         std::cout << "loadSTL: (" << path << ")" << e.what() << std::endl;
