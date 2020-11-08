@@ -96,7 +96,7 @@ void shape_box(DhaibaConnect::PublisherInfo* pub, double r)
         1, 0, 0, 0,
         0, 1, 0, 0,
         0, 0, 1, 0,
-        10, 20, 30, 0,
+        10, 20, 30, 1,
         };
     data.baseInfo().color().r() = 0;
     data.baseInfo().color().g() = 255;
@@ -116,7 +116,7 @@ void shape_sphere(DhaibaConnect::PublisherInfo* pub, double r)
         1, 0, 0, 0,
         0, 1, 0, 0,
         0, 0, 1, 0,
-        10, 20, 30, 0,
+        10, 20, 30, 1,
         };
     data.baseInfo().color().r() = 0;
     data.baseInfo().color().g() = 255;
@@ -137,7 +137,7 @@ void geometry_state(DhaibaConnect::PublisherInfo* pub, double r)
         1, 0, 0, 0,
         0, 1, 0, 0,
         0, 0, 1, 0,
-        d, d, d, 0
+        d, d, d, 1
         };
     pub->write(&data);
 }
