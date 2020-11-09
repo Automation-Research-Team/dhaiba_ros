@@ -16,35 +16,58 @@ namespace dhaiba_ros
 {
 
 const std::string log_element = "element";
-const int scale = 1000;
+
+std::ostream&
+operator <<(std::ostream& out, const urdf::Vector3& v)
+{
+    return out << v.x << ' ' << v.y << ' ' << v.z;
+}
+
+std::ostream&
+operator <<(std::ostream& out, const urdf::Rotation& q)
+{
+    return out << q.x << ' ' << q.y << ' ' << q.z << ' ' << q.w;
+}
+
+std::ostream&
+operator <<(std::ostream& out, const urdf::Pose& pose)
+{
+    return out << '[' << pose.position << ';' << pose.rotation << ']';
+}
+
+static urdf::Pose
+operator *(const urdf::Pose& a, const urdf::Pose& b)
+{
+    urdf::Pose result;
+    result.position = a.rotation * b.position + a.position;
+    result.rotation = a.rotation * b.rotation;
+    return result;
+}
 
 static dhc::Mat44
-pose_to_mat(const urdf::Pose& pose, const int i = 1)
+tf_to_mat(const tf::Transform& trns, const tf::Vector3& scale)
 {
-    dhc::Mat44 mat;
+    const auto& R = trns.getBasis().scaled(scale);
+    const auto& t = trns.getOrigin();
+    dhc::Mat44  mat;
     mat.value() = {
-                           i,                    0,                    0, 0,
-                           0,                    i,                    0, 0,
-                           0,                    0,                    i, 0,
-        1000*pose.position.x, 1000*pose.position.y, 1000*pose.position.z, 1,
-
-    };
-    ROS_DEBUG_STREAM_NAMED(log_element, "pose: "
-        << pose.position.x << " " << pose.position.y << " " << pose.position.z);
+           R[0][0], R[1][0], R[2][0], 0,
+           R[0][1], R[1][1], R[2][1], 0,
+           R[0][2], R[1][2], R[2][2], 0,
+           1000*t.x(), 1000*t.y(), 1000*t.z(), 1};
     return mat;
 }
 
 static dhc::Mat44
-tf_to_mat(const tf::Transform& trns, const int i = 1)
+pose_to_mat(
+    const urdf::Pose& pose1, const urdf::Pose& pose2, const tf::Vector3& scale)
 {
-    const auto& R = trns.getBasis();
-    const auto& t = trns.getOrigin();
-    dhc::Mat44  mat;
-    mat.value() = {i*R[0][0],   i*R[1][0],  i*R[2][0], 0,
-           i*R[0][1],   i*R[1][1],  i*R[2][1], 0,
-           i*R[0][2],   i*R[1][2],  i*R[2][2], 0,
-           1000*t.x(), 1000*t.y(), 1000*t.z(), 1};
-    return mat;
+    urdf::Pose pose = pose1 * pose2;
+    tf::Transform tf = transform(pose);
+    ROS_DEBUG_STREAM_NAMED(log_element,
+        "pose_to_mat\npose1\n" << pose1 << "\npose2\n" << pose2
+        << "\ntf\n" << tf);
+    return tf_to_mat(tf, scale);
 }
 
 bool
@@ -112,7 +135,8 @@ Bridge::loadSTL(const std::string& url, std::vector<char>& data)
 }
 
 bool
-Bridge::create_visual_publisher_for_mesh(const urdf::LinkConstSharedPtr& link)
+Bridge::create_visual_publisher_for_mesh(
+                const urdf::LinkConstSharedPtr& link, const urdf::Pose& parent)
 {
     const auto visual   = link->visual;
     const auto pose     = visual->origin;
@@ -128,12 +152,15 @@ Bridge::create_visual_publisher_for_mesh(const urdf::LinkConstSharedPtr& link)
         return false;
     }
 
+    tf::Vector3 scale(
+        geometry->scale.x*1000, geometry->scale.y*1000, geometry->scale.z*1000);
+
     data.fileExtension() = "stl";
     data.description() = link->name + "'s mesh(STL)";
     data.baseInfo().color().r() = 128;
     data.baseInfo().color().g() = 128;
     data.baseInfo().color().b() = 128;
-    data.baseInfo().transform() = pose_to_mat(pose, scale);
+    data.baseInfo().transform() = pose_to_mat(parent, pose, scale);
 
     DhaibaConnect::PublisherInfo* pub = _manager->createPublisher(
                 link->name + ".Mesh::Definition_BinaryFile",
@@ -169,6 +196,7 @@ Bridge::create_visual_publisher_for_mesh(const urdf::LinkConstSharedPtr& link)
         return false;
     }
     _vis_state_pubs[link->name] = pub2;
+    _vis_scales[link->name] = scale;
     ROS_DEBUG_STREAM_NAMED(log_element,
                 "create publisher(mesh)# " << pub2->topicName());
 
@@ -176,17 +204,20 @@ Bridge::create_visual_publisher_for_mesh(const urdf::LinkConstSharedPtr& link)
 }
 
 bool
-Bridge::create_visual_publisher_for_box(const urdf::LinkConstSharedPtr& link)
+Bridge::create_visual_publisher_for_box(
+                const urdf::LinkConstSharedPtr& link, const urdf::Pose& parent)
 {
     const auto visual   = link->visual;
     const auto pose     = visual->origin;
     const auto geometry = (const std::shared_ptr<urdf::Box>&)(visual->geometry);
 
+    tf::Vector3 scale(1000, 1000, 1000);
+
     dhc::ShapeBox data;
     data.baseInfo().color().r() = 128;
     data.baseInfo().color().g() = 128;
     data.baseInfo().color().b() = 128;
-    data.baseInfo().transform() = pose_to_mat(pose, scale);
+    data.baseInfo().transform() = pose_to_mat(parent, pose, scale);
     data.translation().value() = { 0, 0, 0 };
     data.scaling().value() = {
                 geometry->dim.x, geometry->dim.y, geometry->dim.z
@@ -227,6 +258,7 @@ Bridge::create_visual_publisher_for_box(const urdf::LinkConstSharedPtr& link)
         return false;
     }
     _vis_state_pubs[link->name] = pub2;
+    _vis_scales[link->name] = scale;
     ROS_DEBUG_STREAM_NAMED(log_element,
                 "create publisher(box)# " << pub2->topicName());
 
@@ -234,18 +266,21 @@ Bridge::create_visual_publisher_for_box(const urdf::LinkConstSharedPtr& link)
 }
 
 bool
-Bridge::create_visual_publisher_for_sphere(const urdf::LinkConstSharedPtr& link)
+Bridge::create_visual_publisher_for_sphere(
+                const urdf::LinkConstSharedPtr& link, const urdf::Pose& parent)
 {
     const auto visual   = link->visual;
     const auto pose     = visual->origin;
     const auto geometry =
                     (const std::shared_ptr<urdf::Sphere>&)(visual->geometry);
 
+    tf::Vector3 scale(1000, 1000, 1000);
+
     dhc::ShapeSphere data;
     data.baseInfo().color().r() = 128;
     data.baseInfo().color().g() = 128;
     data.baseInfo().color().b() = 128;
-    data.baseInfo().transform() = pose_to_mat(pose, scale);
+    data.baseInfo().transform() = pose_to_mat(parent, pose, scale);
     data.translation().value() = { 0, 0, 0 };
     // data.scaling().value()
     // data.divisionCountU() = 10;
@@ -286,6 +321,7 @@ Bridge::create_visual_publisher_for_sphere(const urdf::LinkConstSharedPtr& link)
         return false;
     }
     _vis_state_pubs[link->name] = pub2;
+    _vis_scales[link->name] = scale;
     ROS_DEBUG_STREAM_NAMED(log_element,
                 "create publisher (sphere) # " << pub2->topicName());
 
@@ -293,12 +329,19 @@ Bridge::create_visual_publisher_for_sphere(const urdf::LinkConstSharedPtr& link)
 }
 
 bool
-Bridge::create_visual_publishers(const urdf::LinkConstSharedPtr& link)
+Bridge::create_visual_publishers(
+        const urdf::LinkConstSharedPtr& link, const urdf::Pose& parent)
 {
     ROS_DEBUG_STREAM_NAMED(log_element,
                 "create_visual_publishers: link[" << link->name << "]");
 
     bool rt = true;
+    urdf::Pose pose;
+
+    if (link->parent_joint)
+        pose = parent * link->parent_joint->parent_to_joint_origin_transform;
+    else
+        pose = parent;
 
     if (link->visual)
     {
@@ -308,13 +351,13 @@ Bridge::create_visual_publishers(const urdf::LinkConstSharedPtr& link)
             switch (visual->geometry->type)
             {
             case urdf::Geometry::MESH:
-                rt = create_visual_publisher_for_mesh(link);
+                rt = create_visual_publisher_for_mesh(link, pose);
                 break;
             case urdf::Geometry::BOX:
-                rt = create_visual_publisher_for_box(link);
+                rt = create_visual_publisher_for_box(link, pose);
                 break;
             case urdf::Geometry::SPHERE:
-                rt = create_visual_publisher_for_sphere(link);
+                rt = create_visual_publisher_for_sphere(link, pose);
                 break;
             case urdf::Geometry::CYLINDER:
                 break;
@@ -331,7 +374,7 @@ Bridge::create_visual_publishers(const urdf::LinkConstSharedPtr& link)
     }
     for (const auto& child_link : link->child_links)
     {
-        rt = create_visual_publishers(child_link);
+        rt = create_visual_publishers(child_link, pose);
         if (! rt)
             break;
     }
@@ -351,6 +394,10 @@ Bridge::send_visual_state(const urdf::LinkConstSharedPtr& link)
             if (_vis_state_pubs.find(child_link->name) != _vis_state_pubs.end())
             {
                 const auto pub = _vis_state_pubs[child_link->name];
+                tf::Vector3 scale(1000, 1000, 1000);
+                if (_vis_scales.find(child_link->name) != _vis_scales.end())
+                    scale = _vis_scales[child_link->name];
+
                 ROS_DEBUG_STREAM_NAMED(log_element,
                         "send_visual_state: " << pub->topicName());
                 tf::StampedTransform tf;
@@ -359,10 +406,13 @@ Bridge::send_visual_state(const urdf::LinkConstSharedPtr& link)
                 dhc::GeometryState data;
                 if (child_link->visual)
                 {
+                    tf::Transform tf2 = transform(child_link->visual->origin);
                     if (child_link->visual->geometry) {
                         switch (child_link->visual->geometry->type)
                         {
                         case urdf::Geometry::MESH:
+                            data.transform() = tf_to_mat(tf * tf2, scale);
+                            break;
                         case urdf::Geometry::BOX:
                         case urdf::Geometry::SPHERE:
                             data.transform() = tf_to_mat(tf, scale);

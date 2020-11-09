@@ -128,11 +128,14 @@ class Bridge
 			 const std::string& child_link_name)		;
 
     bool loadSTL(const std::string& url, std::vector<char>& data);
-    bool create_visual_publisher_for_mesh(const urdf::LinkConstSharedPtr& link);
-    bool create_visual_publisher_for_box(const urdf::LinkConstSharedPtr& link);
+    bool create_visual_publisher_for_mesh(
+                const urdf::LinkConstSharedPtr& link, const urdf::Pose& parent);
+    bool create_visual_publisher_for_box(
+                const urdf::LinkConstSharedPtr& link, const urdf::Pose& parent);
     bool create_visual_publisher_for_sphere(
-                                    const urdf::LinkConstSharedPtr& link);
-    bool create_visual_publishers(const urdf::LinkConstSharedPtr& link);
+                const urdf::LinkConstSharedPtr& link, const urdf::Pose& parent);
+    bool create_visual_publishers(
+                const urdf::LinkConstSharedPtr& link, const urdf::Pose& parent);
     void send_visual_state(const urdf::LinkConstSharedPtr& link);
 
   private:
@@ -150,6 +153,7 @@ class Bridge
 
     std::map<std::string, DhaibaConnect::PublisherInfo*> _vis_def_pubs;
     std::map<std::string, DhaibaConnect::PublisherInfo*> _vis_state_pubs;
+    std::map<std::string, tf::Vector3>             _vis_scales;
     std::map<std::string, dhc::GeometryBinaryFile> _vis_mesh_datas;
     std::map<std::string, dhc::ShapeBox>           _vis_box_datas;
     std::map<std::string, dhc::ShapeSphere>        _vis_sphere_datas;
@@ -251,7 +255,7 @@ Bridge::Bridge(const std::string& name)
         throw;
     }
 
-    if (! create_visual_publishers(_root_link))
+    if (! create_visual_publishers(_root_link, urdf::Pose()))
     {
         ROS_ERROR_STREAM(
             "(dhaiba_ros_bridge) Failed to create publisher for visual.");
