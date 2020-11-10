@@ -4,6 +4,9 @@
   <arg name="rate"		default="10.0"/>
   <arg name="description_param"	default="/robot_description"/>
   <arg name="root_frame"	default="world"/>
+
+  <env name="ROSCONSOLE_CONFIG_FILE"
+    value="$(find dhaiba_ros)/config/custom_rosconsole.conf"/>
     
   <node name="dhaiba_ros_bridge" pkg="dhaiba_ros" type="dhaiba_ros_bridge"
   	output="screen">
