@@ -45,10 +45,10 @@ operator *(const urdf::Pose& a, const urdf::Pose& b)
 }
 
 static dhc::Mat44
-tf_to_mat(const tf::Transform& trns, const tf::Vector3& scale)
+tf_to_mat(const tf::Transform& tf, const tf::Vector3& scale)
 {
-    const auto& R = trns.getBasis().scaled(scale);
-    const auto& t = trns.getOrigin();
+    const auto& R = tf.getBasis().scaled(scale);
+    const auto& t = tf.getOrigin();
     dhc::Mat44  mat;
     mat.value() = {
            R[0][0], R[1][0], R[2][0], 0,
@@ -59,15 +59,37 @@ tf_to_mat(const tf::Transform& trns, const tf::Vector3& scale)
 }
 
 static dhc::Mat44
+tf_to_mat2(const tf::Transform& tf1, const tf::Transform& tf2, const tf::Vector3& scale)
+{
+    const auto q = tf1.getRotation() * tf2.getRotation();
+    tf::Transform tf;
+    tf.setRotation(q);
+    tf.setOrigin(tf1.getOrigin());
+    return tf_to_mat(tf, scale);
+}
+
+static dhc::Mat44
 pose_to_mat(
     const urdf::Pose& pose1, const urdf::Pose& pose2, const tf::Vector3& scale)
 {
-    urdf::Pose pose = pose1 * pose2;
-    tf::Transform tf = transform(pose);
+    tf::Transform tf1 = transform(pose1);
+    tf::Transform tf2 = transform(pose2);
+    tf::Transform tf = tf1 * tf2;
     ROS_DEBUG_STREAM_NAMED(log_element,
         "pose_to_mat\npose1\n" << pose1 << "\npose2\n" << pose2
         << "\ntf\n" << tf);
     return tf_to_mat(tf, scale);
+}
+
+static dhc::Mat44
+pose_to_mat2(
+    const urdf::Pose& pose1, const urdf::Pose& pose2, const tf::Vector3& scale)
+{
+    tf::Transform tf1 = transform(pose1);
+    tf::Transform tf2 = transform(pose2);
+    ROS_DEBUG_STREAM_NAMED(log_element,
+        "pose_to_mat\npose1\n" << pose1 << "\npose2\n" << pose2);
+    return tf_to_mat2(tf1, tf2, scale);
 }
 
 bool
@@ -217,7 +239,7 @@ Bridge::create_visual_publisher_for_box(
     data.baseInfo().color().r() = 128;
     data.baseInfo().color().g() = 128;
     data.baseInfo().color().b() = 128;
-    data.baseInfo().transform() = pose_to_mat(parent, pose, scale);
+    data.baseInfo().transform() = pose_to_mat2(parent, pose, scale);
     data.translation().value() = { 0, 0, 0 };
     data.scaling().value() = {
                 geometry->dim.x, geometry->dim.y, geometry->dim.z
@@ -280,7 +302,7 @@ Bridge::create_visual_publisher_for_sphere(
     data.baseInfo().color().r() = 128;
     data.baseInfo().color().g() = 128;
     data.baseInfo().color().b() = 128;
-    data.baseInfo().transform() = pose_to_mat(parent, pose, scale);
+    data.baseInfo().transform() = pose_to_mat2(parent, pose, scale);
     data.translation().value() = { 0, 0, 0 };
     // data.scaling().value()
     // data.divisionCountU() = 10;
@@ -407,6 +429,8 @@ Bridge::send_visual_state(const urdf::LinkConstSharedPtr& link)
                 if (child_link->visual)
                 {
                     tf::Transform tf2 = transform(child_link->visual->origin);
+                    ROS_DEBUG_STREAM_NAMED(log_element, "send_visual_state:\n"
+                        << tf << "\n" << tf2 << std::endl);
                     if (child_link->visual->geometry) {
                         switch (child_link->visual->geometry->type)
                         {
@@ -415,7 +439,7 @@ Bridge::send_visual_state(const urdf::LinkConstSharedPtr& link)
                             break;
                         case urdf::Geometry::BOX:
                         case urdf::Geometry::SPHERE:
-                            data.transform() = tf_to_mat(tf, scale);
+                            data.transform() = tf_to_mat2(tf, tf2, scale);
                             break;
                         case urdf::Geometry::CYLINDER:
                         default:

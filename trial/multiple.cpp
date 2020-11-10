@@ -182,6 +182,8 @@ void create_publisher_shapebox(
 int main(int argc, char *argv[])
 {
     double r = 0.0;
+    bool enable_state = true;
+    bool zero_start = false;
 
     Manager* manager = Manager::instance();
     manager->initialize("multiple");
@@ -206,6 +208,14 @@ int main(int argc, char *argv[])
                 std::cout << "### mesh ###" << std::endl;
                 create_publisher_mesh(manager,
                     def_pubs, state_pubs, mesh_datas, colors, transforms);
+                break;
+            case 's':
+                std::cout << "### disable state ###" << std::endl;
+                enable_state = false;
+                break;
+            case 'z':
+                std::cout << "### state is zero start ###" << std::endl;
+                zero_start = true;
                 break;
             default:
                 break;
@@ -232,8 +242,11 @@ int main(int argc, char *argv[])
                                 1000,            0,            0, 0,
                                    0,         1000,            0, 0,
                                    0,            0,         1000, 0,
-                        100*(i1+1)+d, 200*(i1+1)+d, 300*(i1+1)+d, 1,
-                        };
+                                (zero_start ? d: 100*(i1+1)+d),
+                                (zero_start ? d: 200*(i1+1)+d),
+                                (zero_start ? d: 300*(i1+1)+d),
+                                1,
+                                };
                     i1++;
                 } else
                 if (pub->topicName().find("Shapebox") != std::string::npos) {
@@ -242,11 +255,15 @@ int main(int argc, char *argv[])
                                    1,            0,            0, 0,
                                    0,            1,            0, 0,
                                    0,            0,            1, 0,
-                         10+100*i2+d,  20+100*i2+d,  30+100*i2+d, 1,
-                        };
+                                (zero_start ? d: 10+100*i2+d),
+                                (zero_start ? d: 20+100*i2+d),
+                                (zero_start ? d: 30+100*i2+d),
+                                1,
+                                };
                     i2++;
                 }
-                _geometry_state(pub, transform);
+                if (enable_state)
+                    _geometry_state(pub, transform);
             }
             std::this_thread::sleep_for(std::chrono::seconds(1));
             r += 0.1;
