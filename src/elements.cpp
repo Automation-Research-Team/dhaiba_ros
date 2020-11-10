@@ -17,24 +17,6 @@ namespace dhaiba_ros
 
 const std::string log_element = "element";
 
-std::ostream&
-operator <<(std::ostream& out, const urdf::Vector3& v)
-{
-    return out << v.x << ' ' << v.y << ' ' << v.z;
-}
-
-std::ostream&
-operator <<(std::ostream& out, const urdf::Rotation& q)
-{
-    return out << q.x << ' ' << q.y << ' ' << q.z << ' ' << q.w;
-}
-
-std::ostream&
-operator <<(std::ostream& out, const urdf::Pose& pose)
-{
-    return out << '[' << pose.position << ';' << pose.rotation << ']';
-}
-
 static urdf::Pose
 operator *(const urdf::Pose& a, const urdf::Pose& b)
 {
@@ -59,44 +41,24 @@ tf_to_mat(const tf::Transform& tf, const tf::Vector3& scale)
 }
 
 static dhc::Mat44
-tf_to_mat2(const tf::Transform& tf1, const tf::Transform& tf2, const tf::Vector3& scale)
+tf_to_mat2(
+            const tf::Transform& tf1,
+            const tf::Transform& tf2,
+            const urdf::Vector3& dim,
+            const tf::Vector3& scale
+            )
 {
-    const auto q = tf1.getRotation() * tf2.getRotation();
-    tf::Transform tf;
-    tf.setRotation(q);
-    tf.setOrigin(tf1.getOrigin());
-    return tf_to_mat(tf, scale);
-}
-
-static dhc::Mat44
-pose_to_mat(
-    const urdf::Pose& pose1, const urdf::Pose& pose2, const tf::Vector3& scale)
-{
-    tf::Transform tf1 = transform(pose1);
-    tf::Transform tf2 = transform(pose2);
     tf::Transform tf = tf1 * tf2;
-    ROS_DEBUG_STREAM_NAMED(log_element,
-        "pose_to_mat\npose1\n" << pose1 << "\npose2\n" << pose2
-        << "\ntf\n" << tf);
+    tf::Vector3 tmp = tf * tf::Vector3(-dim.x/2, -dim.y/2, -dim.z/2);
+    tf.setOrigin(tmp);
     return tf_to_mat(tf, scale);
-}
-
-static dhc::Mat44
-pose_to_mat2(
-    const urdf::Pose& pose1, const urdf::Pose& pose2, const tf::Vector3& scale)
-{
-    tf::Transform tf1 = transform(pose1);
-    tf::Transform tf2 = transform(pose2);
-    ROS_DEBUG_STREAM_NAMED(log_element,
-        "pose_to_mat\npose1\n" << pose1 << "\npose2\n" << pose2);
-    return tf_to_mat2(tf1, tf2, scale);
 }
 
 bool
-Bridge::loadSTL(const std::string& url, std::vector<char>& data)
+Bridge::loadMesh(const std::string& url, std::vector<char>& data)
 {
     ROS_DEBUG_STREAM_NAMED(log_element,
-        "loadSTL: url=" << url << " data max_size=" << data.max_size());
+        "loadMesh: url=" << url << " data max_size=" << data.max_size());
     data.clear();
 
     const char* type[] = {
@@ -118,7 +80,7 @@ Bridge::loadSTL(const std::string& url, std::vector<char>& data)
             std::string package_name = url.substr(pos1+len, pos2-(pos1+len));
             std::string file_name = url.substr(pos2+1);
             ROS_DEBUG_STREAM_NAMED(log_element,
-                "loadSTL: package=" << package_name << " file=" << file_name);
+                "loadMesh: package=" << package_name << " file=" << file_name);
             path = ros::package::getPath(package_name);
             path += "/" + file_name;
         }
@@ -126,10 +88,10 @@ Bridge::loadSTL(const std::string& url, std::vector<char>& data)
             path = url.substr(pos1+strlen(type[i]));
         break;
     }
-    ROS_DEBUG_STREAM_NAMED(log_element, "loadSTL: path=" << path);
+    ROS_DEBUG_STREAM_NAMED(log_element, "loadMesh: path=" << path);
     if (path.size() <= 0)
     {
-        ROS_ERROR_STREAM("loadSTL: path size is 0");
+        ROS_ERROR_STREAM("loadMesh: path size is 0");
         return false;
     }
 
@@ -138,7 +100,7 @@ Bridge::loadSTL(const std::string& url, std::vector<char>& data)
         f.open(path, std::ios_base::in | std::ios_base::binary);
         if (!f)
         {
-            ROS_ERROR_STREAM("loadSTL: (" << path << ") can not open");
+            ROS_ERROR_STREAM("loadMesh: (" << path << ") can not open");
             return false;
         }
         f.seekg(0, std::ios_base::end);
@@ -148,9 +110,9 @@ Bridge::loadSTL(const std::string& url, std::vector<char>& data)
         f.read(data.data(), fsize);
         f.close();
         ROS_DEBUG_STREAM_NAMED(log_element,
-                "loadSTL: data size=" << data.size());
+                "loadMesh: data size=" << data.size());
     } catch (const std::exception& e) {
-        ROS_ERROR_STREAM("loadSTL: (" << path << ")" << e.what());
+        ROS_ERROR_STREAM("loadMesh: (" << path << ")" << e.what());
         return false;
     }
     return (data.size() > 0 ? true: false);
@@ -167,7 +129,7 @@ Bridge::create_visual_publisher_for_mesh(
 
     dhc::GeometryBinaryFile data;
 
-    if (! loadSTL(geometry->filename, data.fileData().data()))
+    if (! loadMesh(geometry->filename, data.fileData().data()))
     {
         ROS_ERROR_STREAM("create_visual_publisher_for_mesh: Failed to load "
                 << geometry->filename);
@@ -177,12 +139,18 @@ Bridge::create_visual_publisher_for_mesh(
     tf::Vector3 scale(
         geometry->scale.x*1000, geometry->scale.y*1000, geometry->scale.z*1000);
 
-    data.fileExtension() = "stl";
-    data.description() = link->name + "'s mesh(STL)";
+    std::string file_extension = "";
+    const auto pos = geometry->filename.rfind(".");
+    if (pos != std::string::npos)
+        file_extension = geometry->filename.substr(pos+1);
+
+    data.fileExtension() = file_extension;
+    data.description() = link->name + "'s mesh(" + file_extension + ")";
     data.baseInfo().color().r() = 128;
     data.baseInfo().color().g() = 128;
     data.baseInfo().color().b() = 128;
-    data.baseInfo().transform() = pose_to_mat(parent, pose, scale);
+    data.baseInfo().transform() = tf_to_mat(
+                                transform(parent) * transform(pose), scale);
 
     DhaibaConnect::PublisherInfo* pub = _manager->createPublisher(
                 link->name + ".Mesh::Definition_BinaryFile",
@@ -239,7 +207,8 @@ Bridge::create_visual_publisher_for_box(
     data.baseInfo().color().r() = 128;
     data.baseInfo().color().g() = 128;
     data.baseInfo().color().b() = 128;
-    data.baseInfo().transform() = pose_to_mat2(parent, pose, scale);
+    data.baseInfo().transform() = tf_to_mat2(
+                transform(parent), transform(pose), geometry->dim, scale);
     data.translation().value() = { 0, 0, 0 };
     data.scaling().value() = {
                 geometry->dim.x, geometry->dim.y, geometry->dim.z
@@ -302,7 +271,8 @@ Bridge::create_visual_publisher_for_sphere(
     data.baseInfo().color().r() = 128;
     data.baseInfo().color().g() = 128;
     data.baseInfo().color().b() = 128;
-    data.baseInfo().transform() = pose_to_mat2(parent, pose, scale);
+    data.baseInfo().transform() = tf_to_mat(
+                                transform(parent) * transform(pose), scale);
     data.translation().value() = { 0, 0, 0 };
     // data.scaling().value()
     // data.divisionCountU() = 10;
@@ -428,19 +398,25 @@ Bridge::send_visual_state(const urdf::LinkConstSharedPtr& link)
                 dhc::GeometryState data;
                 if (child_link->visual)
                 {
-                    tf::Transform tf2 = transform(child_link->visual->origin);
-                    ROS_DEBUG_STREAM_NAMED(log_element, "send_visual_state:\n"
-                        << tf << "\n" << tf2 << std::endl);
                     if (child_link->visual->geometry) {
                         switch (child_link->visual->geometry->type)
                         {
                         case urdf::Geometry::MESH:
-                            data.transform() = tf_to_mat(tf * tf2, scale);
+                            data.transform() = tf_to_mat(
+                                    tf * transform(child_link->visual->origin),
+                                    scale
+                                    );
                             break;
                         case urdf::Geometry::BOX:
-                        case urdf::Geometry::SPHERE:
-                            data.transform() = tf_to_mat2(tf, tf2, scale);
+                            data.transform() = tf_to_mat2(
+                                    tf,
+                                    transform(child_link->visual->origin),
+                                    ((const std::shared_ptr<urdf::Box>&)(
+                                            child_link->visual->geometry))->dim,
+                                    scale
+                                    );
                             break;
+                        case urdf::Geometry::SPHERE:
                         case urdf::Geometry::CYLINDER:
                         default:
                             break;

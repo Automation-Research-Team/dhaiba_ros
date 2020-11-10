@@ -127,7 +127,7 @@ class Bridge
     bool	exist_tf(const std::string& parent_link_name,
 			 const std::string& child_link_name)		;
 
-    bool loadSTL(const std::string& url, std::vector<char>& data);
+    bool loadMesh(const std::string& url, std::vector<char>& data);
     bool create_visual_publisher_for_mesh(
                 const urdf::LinkConstSharedPtr& link, const urdf::Pose& parent);
     bool create_visual_publisher_for_box(
