@@ -400,8 +400,8 @@ int
 main(int argc, char** argv)
 {
     ros::init(argc, argv, "dhaiba_ros_bridge");
-    ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME,
-                                   ros::console::levels::Debug);
+    // ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME,
+    //                                ros::console::levels::Debug);
 
     try
     {
