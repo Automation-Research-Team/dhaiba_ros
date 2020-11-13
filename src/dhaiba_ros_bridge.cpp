@@ -129,14 +129,18 @@ class Bridge
 
     bool loadMesh(const std::string& url, std::vector<char>& data);
     bool create_visual_publisher_for_mesh(
-                const urdf::LinkConstSharedPtr& link, const urdf::Pose& parent);
+		const urdf::LinkConstSharedPtr& link,
+		const tf::Transform& parent)				;
     bool create_visual_publisher_for_box(
-                const urdf::LinkConstSharedPtr& link, const urdf::Pose& parent);
+		const urdf::LinkConstSharedPtr& link,
+		const tf::Transform& parent)				;
     bool create_visual_publisher_for_sphere(
-                const urdf::LinkConstSharedPtr& link, const urdf::Pose& parent);
+		const urdf::LinkConstSharedPtr& link,
+		const tf::Transform& parent)				;
     bool create_visual_publishers(
-                const urdf::LinkConstSharedPtr& link, const urdf::Pose& parent);
-    void send_visual_state(const urdf::LinkConstSharedPtr& link);
+                const urdf::LinkConstSharedPtr& link,
+		const tf::Transform& parent)				;
+    void send_visual_state(const urdf::LinkConstSharedPtr& link)	;
 
   private:
     ros::NodeHandle				_nh;
@@ -255,7 +259,9 @@ Bridge::Bridge(const std::string& name)
         throw;
     }
 
-    if (! create_visual_publishers(_root_link, urdf::Pose()))
+    if (! create_visual_publishers(_root_link,
+				   tf::Transform({0.0, 0.0, 0.0, 1.0},
+						 {0.0, 0.0, 0.0})))
     {
         ROS_ERROR_STREAM(
             "(dhaiba_ros_bridge) Failed to create publisher for visual.");

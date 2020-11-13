@@ -17,14 +17,14 @@ namespace dhaiba_ros
 
 const std::string log_element = "element";
 
-static urdf::Pose
-operator *(const urdf::Pose& a, const urdf::Pose& b)
-{
-    urdf::Pose result;
-    result.position = a.rotation * b.position + a.position;
-    result.rotation = a.rotation * b.rotation;
-    return result;
-}
+// static urdf::Pose
+// operator *(const urdf::Pose& a, const urdf::Pose& b)
+// {
+//     urdf::Pose result;
+//     result.position = a.rotation * b.position + a.position;
+//     result.rotation = a.rotation * b.rotation;
+//     return result;
+// }
 
 static dhc::Mat44
 tf_to_mat(const tf::Transform& tf, const tf::Vector3& scale)
@@ -119,11 +119,11 @@ Bridge::loadMesh(const std::string& url, std::vector<char>& data)
 }
 
 bool
-Bridge::create_visual_publisher_for_mesh(
-                const urdf::LinkConstSharedPtr& link, const urdf::Pose& parent)
+Bridge::create_visual_publisher_for_mesh(const urdf::LinkConstSharedPtr& link,
+					 const tf::Transform& parent)
 {
     const auto visual   = link->visual;
-    const auto pose     = visual->origin;
+    const auto pose     = transform(visual->origin);
     const auto geometry =
                     (const std::shared_ptr<urdf::Mesh>&)(visual->geometry);
 
@@ -136,8 +136,8 @@ Bridge::create_visual_publisher_for_mesh(
         return false;
     }
 
-    tf::Vector3 scale(
-        geometry->scale.x*1000, geometry->scale.y*1000, geometry->scale.z*1000);
+    tf::Vector3 scale(geometry->scale.x*1000,
+		      geometry->scale.y*1000, geometry->scale.z*1000);
 
     std::string file_extension = "";
     const auto pos = geometry->filename.rfind(".");
@@ -149,8 +149,7 @@ Bridge::create_visual_publisher_for_mesh(
     data.baseInfo().color().r() = 128;
     data.baseInfo().color().g() = 128;
     data.baseInfo().color().b() = 128;
-    data.baseInfo().transform() = tf_to_mat(
-                                transform(parent) * transform(pose), scale);
+    data.baseInfo().transform() = tf_to_mat(parent * pose, scale);
 
     DhaibaConnect::PublisherInfo* pub = _manager->createPublisher(
                 link->name + ".Mesh::Definition_BinaryFile",
@@ -194,11 +193,11 @@ Bridge::create_visual_publisher_for_mesh(
 }
 
 bool
-Bridge::create_visual_publisher_for_box(
-                const urdf::LinkConstSharedPtr& link, const urdf::Pose& parent)
+Bridge::create_visual_publisher_for_box(const urdf::LinkConstSharedPtr& link,
+					const tf::Transform& parent)
 {
     const auto visual   = link->visual;
-    const auto pose     = visual->origin;
+    const auto pose     = transform(visual->origin);
     const auto geometry = (const std::shared_ptr<urdf::Box>&)(visual->geometry);
 
     tf::Vector3 scale(1000, 1000, 1000);
@@ -207,12 +206,11 @@ Bridge::create_visual_publisher_for_box(
     data.baseInfo().color().r() = 128;
     data.baseInfo().color().g() = 128;
     data.baseInfo().color().b() = 128;
-    data.baseInfo().transform() = tf_to_mat2(
-                transform(parent), transform(pose), geometry->dim, scale);
+    data.baseInfo().transform() = tf_to_mat2(parent, pose,
+					     geometry->dim, scale);
     data.translation().value() = { 0, 0, 0 };
-    data.scaling().value() = {
-                geometry->dim.x, geometry->dim.y, geometry->dim.z
-                };
+    data.scaling().value() = {geometry->dim.x,
+			      geometry->dim.y, geometry->dim.z};
     data.divisionCount().value() = { 3, 3, 3 };
 
     DhaibaConnect::PublisherInfo* pub = _manager->createPublisher(
@@ -221,7 +219,7 @@ Bridge::create_visual_publisher_for_box(
     if (!pub)
     {
         ROS_ERROR_STREAM("(dhaiba_ros_bridge) Failed to create publisher # "
-                << link->name + ".ShapeBox::Definition");
+			 << link->name + ".ShapeBox::Definition");
         return false;
     }
     _vis_def_pubs[link->name] = pub;
@@ -258,10 +256,10 @@ Bridge::create_visual_publisher_for_box(
 
 bool
 Bridge::create_visual_publisher_for_sphere(
-                const urdf::LinkConstSharedPtr& link, const urdf::Pose& parent)
+                const urdf::LinkConstSharedPtr& link, const tf::Transform& parent)
 {
     const auto visual   = link->visual;
-    const auto pose     = visual->origin;
+    const auto pose     = transform(visual->origin);
     const auto geometry =
                     (const std::shared_ptr<urdf::Sphere>&)(visual->geometry);
 
@@ -271,8 +269,7 @@ Bridge::create_visual_publisher_for_sphere(
     data.baseInfo().color().r() = 128;
     data.baseInfo().color().g() = 128;
     data.baseInfo().color().b() = 128;
-    data.baseInfo().transform() = tf_to_mat(
-                                transform(parent) * transform(pose), scale);
+    data.baseInfo().transform() = tf_to_mat(parent * pose, scale);
     data.translation().value() = { 0, 0, 0 };
     // data.scaling().value()
     // data.divisionCountU() = 10;
@@ -322,16 +319,16 @@ Bridge::create_visual_publisher_for_sphere(
 
 bool
 Bridge::create_visual_publishers(
-        const urdf::LinkConstSharedPtr& link, const urdf::Pose& parent)
+        const urdf::LinkConstSharedPtr& link, const tf::Transform& parent)
 {
     ROS_DEBUG_STREAM_NAMED(log_element,
                 "create_visual_publishers: link[" << link->name << "]");
 
     bool rt = true;
-    urdf::Pose pose;
+    tf::Transform pose;
 
     if (link->parent_joint)
-        pose = parent * link->parent_joint->parent_to_joint_origin_transform;
+        pose = parent * transform(link->parent_joint->parent_to_joint_origin_transform);
     else
         pose = parent;
 
