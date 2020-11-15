@@ -249,18 +249,18 @@ class Bridge
 				  dhc::LinkState& link_state)	const	;
 
   private:
-    ros::NodeHandle					_nh;
-    const tf::TransformListener				_listener;
-    double						_rate;
+    ros::NodeHandle					 _nh;
+    const tf::TransformListener				 _listener;
+    double						 _rate;
 
-    urdf::ModelInterfaceSharedPtr			_model;
-    urdf::LinkConstSharedPtr				_root_link;
-    std::unordered_map<std::string, tf::Transform>	_Tj0p0;
-    std::unordered_map<std::string, Element>		_elements;
+    urdf::ModelInterfaceSharedPtr			 _model;
+    urdf::LinkConstSharedPtr				 _root_link;
+    std::unordered_map<std::string, const tf::Transform> _Tj0p0;
+    std::unordered_map<std::string, const Element>	 _elements;
     
-    DhaibaConnect::Manager* const			_manager;
-    DhaibaConnect::PublisherInfo*			_armature_pub;
-    DhaibaConnect::PublisherInfo*			_link_state_pub;
+    DhaibaConnect::Manager* const			 _manager;
+    DhaibaConnect::PublisherInfo*			 _armature_pub;
+    DhaibaConnect::PublisherInfo*			 _link_state_pub;
 };
 
 Bridge::Bridge(const std::string& name)
@@ -275,12 +275,11 @@ Bridge::Bridge(const std::string& name)
      _armature_pub(nullptr),
      _link_state_pub(nullptr)
 {
-    _nh.param("rate", _rate, 10.0);
+    _nh.param("rate", _rate, _rate);
 
   // Load robot model described in URDF.
-    std::string	description_param;
-    _nh.param("description_param", description_param,
-              std::string("/robot_description"));
+    auto	description_param = std::string("robot_description");
+    _nh.param("description_param", description_param, description_param);
     std::string	description_xml;
     if (!_nh.getParam(description_param, description_xml))
     {
@@ -489,7 +488,7 @@ Bridge::Element::Element(DhaibaConnect::Manager* manager,
 {
     if (_visual->geometry->type == urdf::Geometry::MESH)
     {
-	const auto	scale = static_cast<const urdf::Mesh*>(
+	const auto&	scale = static_cast<const urdf::Mesh*>(
 				    _visual->geometry.get())->scale;
 	const auto	Tjo   = transform(_visual->origin);
 	_Tjo = tf::Transform(Tjo.getBasis().scaled({scale.x,
@@ -536,8 +535,8 @@ Bridge::Element::publish_definition() const
 				_visual->geometry.get())->dim;
 	dhc::ShapeBox	box;
 	box.baseInfo()		    = base_info;
-	box.translation().value()   = {-dim.x/2, -dim.y/2, -dim.z/2};
-	box.scaling().value()       = {dim.x, dim.y, dim.z};
+	box.translation().value()   = { -dim.x/2, -dim.y/2, -dim.z/2 };
+	box.scaling().value()       = { dim.x, dim.y, dim.z };
 	box.divisionCount().value() = { 3, 3, 3 };
 
 	_definition_pub->write(&box);
