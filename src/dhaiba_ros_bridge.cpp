@@ -219,11 +219,11 @@ class Bridge
   private:
     using link_cp = urdf::LinkConstSharedPtr;
 
-    class AugumentedLink
+    class Element
     {
       public:
-		AugumentedLink(DhaibaConnect::Manager* manager,
-			       const link_cp& link)			;
+		Element(DhaibaConnect::Manager* manager,
+			const link_cp& link)				;
 
 	void	publish_definition()				 const	;
 	void	publish_geometry_state(const tf::Transform& Twj) const	;
@@ -244,7 +244,7 @@ class Bridge
     void	create_armature(const link_cp& link,
 				const tf::Transform& Twp0,
 				dhc::Armature& armature)	const	;
-    void	create_primitives(const link_cp& link)			;
+    void	create_elements(const link_cp& link)			;
     void	create_link_state(const link_cp& link,
 				  dhc::LinkState& link_state)	const	;
 
@@ -256,7 +256,7 @@ class Bridge
     urdf::ModelInterfaceSharedPtr			_model;
     urdf::LinkConstSharedPtr				_root_link;
     std::unordered_map<std::string, tf::Transform>	_Tj0p0;
-    std::unordered_map<std::string, AugumentedLink>	_augumented_links;
+    std::unordered_map<std::string, Element>		_elements;
     
     DhaibaConnect::Manager* const			_manager;
     DhaibaConnect::PublisherInfo*			_armature_pub;
@@ -270,7 +270,7 @@ Bridge::Bridge(const std::string& name)
      _model(),
      _root_link(),
      _Tj0p0(),
-     _augumented_links(),
+     _elements(),
      _manager(DhaibaConnect::Manager::instance()),
      _armature_pub(nullptr),
      _link_state_pub(nullptr)
@@ -347,8 +347,8 @@ Bridge::Bridge(const std::string& name)
                               pub->write(&armature);
                           }});
 
-  // Create publishers for geometric primitives.
-    create_primitives(_root_link);
+  // Create publishers for geometric elements.
+    create_elements(_root_link);
     
   // Create publisher for link state.
     ROS_INFO_STREAM("(dhaiba_ros_bridge) Node[" << name << "] initialized.");
@@ -407,24 +407,24 @@ Bridge::create_armature(const link_cp& link, const tf::Transform& Twp0,
 
 	_Tj0p0[armature_link.linkName()] = Tp0j0.inverse();
 
-        ROS_DEBUG_STREAM("create_primitives: " << _root_link->name
-			 << " <== "	       << armature_link.linkName()
-			 << "\n  Twj0:  "      << armature_link.Twj0());
+        ROS_DEBUG_STREAM("create_elements: " << _root_link->name
+			 << " <== "	     << armature_link.linkName()
+			 << "\n  Twj0:  "    << armature_link.Twj0());
 
         create_armature(child_link, Twj0, armature);
     }
 }
 
 void
-Bridge::create_primitives(const link_cp& link)
+Bridge::create_elements(const link_cp& link)
 {
     if (link->visual && link->visual->geometry)
-    	_augumented_links.emplace(std::piecewise_construct,
-    				  std::forward_as_tuple(link->name),
-    				  std::forward_as_tuple(_manager, link));
+    	_elements.emplace(std::piecewise_construct,
+			  std::forward_as_tuple(link->name),
+			  std::forward_as_tuple(_manager, link));
 
     for (const auto& child_link : link->child_links)
-        create_primitives(child_link);
+        create_elements(child_link);
 }
 
 void
@@ -438,8 +438,7 @@ Bridge::create_link_state(const link_cp& link,
 	    tf::StampedTransform	Twj;
 	    _listener.lookupTransform(_root_link->name, link->name,
 				      ros::Time(0), Twj);
-	    _augumented_links.find(link->name)->second
-			     .publish_geometry_state(Twj);
+	    _elements.find(link->name)->second.publish_geometry_state(Twj);
 	}
         catch (const std::exception& err)
         {
@@ -476,10 +475,10 @@ Bridge::create_link_state(const link_cp& link,
 }
 
 /************************************************************************
-*  class Bridge::AugumentedLink						*
+*  class Bridge::Element						*
 ************************************************************************/
-Bridge::AugumentedLink::AugumentedLink(DhaibaConnect::Manager* manager,
-				       const link_cp& link)
+Bridge::Element::Element(DhaibaConnect::Manager* manager,
+			 const link_cp& link)
     :_visual(link->visual),
      _Tjo(),
      _definition_pub(create_publisher(manager, link)),
@@ -512,7 +511,7 @@ Bridge::AugumentedLink::AugumentedLink(DhaibaConnect::Manager* manager,
 }
 
 void
-Bridge::AugumentedLink::publish_definition() const
+Bridge::Element::publish_definition() const
 {
     dhc::GeometryBaseInfo	base_info;
     if (_visual->material)
@@ -599,7 +598,7 @@ Bridge::AugumentedLink::publish_definition() const
 }
 
 void
-Bridge::AugumentedLink::publish_geometry_state(const tf::Transform& Twj) const
+Bridge::Element::publish_geometry_state(const tf::Transform& Twj) const
 {
     dhc::GeometryState	state;
     state.transform() = mat44(Twj * _Tjo, true);
