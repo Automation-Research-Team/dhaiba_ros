@@ -211,6 +211,30 @@ loadMesh(const std::string& url)
     return data;
 }
 
+static urdf::JointConstSharedPtr
+find_joint(const urdf::LinkConstSharedPtr& link,
+	   const urdf::LinkConstSharedPtr& child_link)
+{
+  // Find a joint with a child_link_name equal to the name of child_link.
+    const auto	joint = std::find_if(link->child_joints.cbegin(),
+				     link->child_joints.cend(),
+				     [&child_link](const auto& joint)
+				     {
+					 return (joint->child_link_name
+						 == child_link->name);
+				     });
+    if (joint == link->child_joints.cend())
+    {
+	ROS_ERROR_STREAM("(dhaiba_ros_bridge) Internal inconsistency! Child link["
+			 << child_link->name
+			 << "] is not found in child joints of link["
+			 << link->name << "].");
+	throw;
+    }
+
+    return *joint;
+}
+
 /************************************************************************
 *  class Bridge								*
 ************************************************************************/
@@ -244,8 +268,7 @@ class Bridge
     void	create_armature(const link_cp& link,
 				const tf::Transform& Twp0,
 				dhc::Armature& armature)	const	;
-    void	create_elements(const link_cp& link,
-				const tf::Transform& Twp0)		;
+    void	create_elements(const link_cp& link)			;
     void	create_link_state(const link_cp& link,
 				  dhc::LinkState& link_state)	const	;
 
@@ -348,8 +371,7 @@ Bridge::Bridge(const std::string& name)
                           }});
 
   // Create publishers for geometric elements.
-    create_elements(_root_link,
-		    tf::Transform({0.0, 0.0, 0.0, 1.0}, {0.0, 0.0, 0.0}));
+    create_elements(_root_link);
     
   // Create publisher for link state.
     ROS_INFO_STREAM("(dhaiba_ros_bridge) Node[" << name << "] initialized.");
@@ -400,7 +422,7 @@ Bridge::create_armature(const link_cp& link, const tf::Transform& Twp0,
 }
 
 void
-Bridge::create_elements(const link_cp& link, const tf::Transform& Twp0)
+Bridge::create_elements(const link_cp& link)
 {
     if (link->visual && link->visual->geometry)
     	_elements.emplace(std::piecewise_construct,
@@ -408,9 +430,7 @@ Bridge::create_elements(const link_cp& link, const tf::Transform& Twp0)
 			  std::forward_as_tuple(_manager, link));
 
     for (const auto& child_link : link->child_links)
-        create_elements(child_link,
-			Twp0 * transform(find_joint(link, child_link)
-					 ->parent_to_joint_origin_transform));
+        create_elements(child_link);
 }
 
 void
