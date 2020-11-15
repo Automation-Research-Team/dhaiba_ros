@@ -11,7 +11,7 @@
 #include <DhaibaConnectN/idl/TopicDataTypeCore.h>
 
 #include <string>
-#include <map>
+#include <unordered_map>
 #include <regex>
 #include <iomanip>
 #include <fstream>
@@ -113,6 +113,56 @@ mat44(const tf::Transform& trns, bool scale=false)
     return mat;
 }
 
+static DhaibaConnect::PublisherInfo*
+create_publisher(DhaibaConnect::Manager* manager,
+		 const std::string& topicName,
+		 const std::string& typeName, bool highReliability)
+{
+    const auto	pub = manager->createPublisher(topicName, typeName, 
+					       false, highReliability);
+    if (!pub)
+    {
+        ROS_ERROR_STREAM(
+            "(dhaiba_ros_bridge) Failed to create publisher for topic["
+	    << topicName << "] of type[" << typeName << ']');
+        throw;
+    }
+
+    return pub;
+}
+
+static DhaibaConnect::PublisherInfo*
+create_publisher(DhaibaConnect::Manager* manager,
+		 const urdf::LinkConstSharedPtr& link)
+{
+    std::string	topicName, typeName;
+    switch (link->visual->geometry->type)
+    {
+      case urdf::Geometry::BOX:
+	topicName = link->name + ".ShapeBox::Definition";
+	typeName  = "dhc::ShapeBox";
+	break;
+      // case urdf::Geometry::SPHERE:
+      // 	topicName = link->name + ".ShapeSphere::Definition";
+      // 	typeName  = "dhc::ShapeSphere";
+      // 	break;
+      // case urdf::Geometry::CYLINDER:
+      // 	topicName = link->name + ".ShapeCylinder::Definition";
+      // 	typeName  = "dhc::ShapeCylinder";
+      // 	break;
+      case urdf::Geometry::MESH:
+	topicName = link->name + ".Mesh::Definition_BinaryFile";
+	typeName  = "dhc::GeometryBinaryFile";
+	break;
+      default:
+	ROS_ERROR_STREAM("(dhaiba_ros_bridge) Unknown geometry type["
+			 << link->visual->geometry->type << ']');
+	return nullptr;
+    }
+
+    return create_publisher(manager, topicName, typeName, true);
+}
+
 static std::vector<char>
 loadMesh(const std::string& url)
 {
@@ -166,20 +216,24 @@ loadMesh(const std::string& url)
 ************************************************************************/
 class Bridge
 {
-  public:
-    using base_info_t	= dhc::GeometryBaseInfo;
-    using box_t		= dhc::ShapeBox;
-    using sphere_t	= dhc::ShapeSphere;
-    using mesh_t	= dhc::GeometryBinaryFile;
-    
   private:
-    using armature_t	= dhc::Armature;
-    using boxes_t	= std::vector<box_t>;
-    using spheres_t	= std::vector<sphere_t>;
-    using meshes_t	= std::vector<mesh_t>;
-    using link_cp	= urdf::LinkConstSharedPtr;
-    using visual_cp	= urdf::VisualConstSharedPtr;
-    using material_cp	= urdf::MaterialConstSharedPtr;
+    using link_cp = urdf::LinkConstSharedPtr;
+
+    class AugumentedLink
+    {
+      public:
+		AugumentedLink(DhaibaConnect::Manager* manager,
+			       const link_cp& link)			;
+
+	void	publish_definition()				 const	;
+	void	publish_geometry_state(const tf::Transform& Twj) const	;
+	
+      private:
+	const urdf::VisualConstSharedPtr	_visual;
+	tf::Transform				_Tjo;
+	DhaibaConnect::PublisherInfo* const	_definition_pub;
+	DhaibaConnect::PublisherInfo* const	_geometry_state_pub;
+    };
     
   public:
 		Bridge(const std::string& name)				;
@@ -187,56 +241,26 @@ class Bridge
     void	run()						const	;
 
   private:
-    DhaibaConnect::PublisherInfo*
-		create_publisher(const std::string& topicName,
-				 const std::string& typeName,
-				 bool highReliability)		const	;
-    void	create_primitives(const link_cp& link,
-				  const tf::Transform& Twp0)		;
+    void	create_armature(const link_cp& link,
+				const tf::Transform& Twp0,
+				dhc::Armature& armature)	const	;
+    void	create_primitives(const link_cp& link)			;
     void	create_link_state(const link_cp& link,
 				  dhc::LinkState& link_state)	const	;
-    void	publish_geometry_state(const link_cp& link)	const	;
-
-    box_t	create_box(const link_cp& link,
-			   const tf::Transform& Twp0)			;
-    sphere_t	create_sphere(const link_cp& link,
-			      const tf::Transform& Twp0)		;
-    mesh_t	create_mesh(const link_cp& link,
-			    const tf::Transform& Twp0)			;
-    base_info_t	create_base_info(const material_cp& visual,
-				 const tf::Transform& Twp0)		;
 
   private:
-    ros::NodeHandle				_nh;
-    const tf::TransformListener			_listener;
-    double					_rate;
+    ros::NodeHandle					_nh;
+    const tf::TransformListener				_listener;
+    double						_rate;
 
-    urdf::ModelInterfaceSharedPtr		_model;
-    urdf::LinkConstSharedPtr			_root_link;
-    std::map<std::string, tf::Transform>	_Tj0p0;
-    std::map<std::string, tf::Transform>	_Tjo;
-
-    armature_t					_armature;
-    boxes_t					_boxes;
-    spheres_t					_spheres;
-    meshes_t					_meshes;
+    urdf::ModelInterfaceSharedPtr			_model;
+    urdf::LinkConstSharedPtr				_root_link;
+    std::unordered_map<std::string, tf::Transform>	_Tj0p0;
+    std::unordered_map<std::string, AugumentedLink>	_augumented_links;
     
-    DhaibaConnect::Manager* const		_manager;
-    DhaibaConnect::PublisherInfo*		_armature_pub;
-    DhaibaConnect::PublisherInfo*		_link_state_pub;
-
-    DhaibaConnect::PublisherInfo*		_shape_box_pub;
-    DhaibaConnect::PublisherInfo*		_shape_sphere_pub;
-    DhaibaConnect::PublisherInfo*		_mesh_pub;
-    DhaibaConnect::PublisherInfo*		_geometry_state_pub;
-
-    // std::map<std::string, DhaibaConnect::PublisherInfo*> _vis_def_pubs;
-    // std::map<std::string, DhaibaConnect::PublisherInfo*> _vis_state_pubs;
-    std::map<std::string, tf::Vector3>             _vis_scales;
-    std::map<std::string, dhc::GeometryBinaryFile> _vis_mesh_datas;
-    std::map<std::string, dhc::ShapeBox>           _vis_box_datas;
-    std::map<std::string, dhc::ShapeSphere>        _vis_sphere_datas;
-
+    DhaibaConnect::Manager* const			_manager;
+    DhaibaConnect::PublisherInfo*			_armature_pub;
+    DhaibaConnect::PublisherInfo*			_link_state_pub;
 };
 
 Bridge::Bridge(const std::string& name)
@@ -246,13 +270,10 @@ Bridge::Bridge(const std::string& name)
      _model(),
      _root_link(),
      _Tj0p0(),
+     _augumented_links(),
      _manager(DhaibaConnect::Manager::instance()),
      _armature_pub(nullptr),
-     _link_state_pub(nullptr),
-     _shape_box_pub(nullptr),
-     _shape_sphere_pub(nullptr),
-     _mesh_pub(nullptr),
-     _geometry_state_pub(nullptr)
+     _link_state_pub(nullptr)
 {
     _nh.param("rate", _rate, 10.0);
 
@@ -304,61 +325,31 @@ Bridge::Bridge(const std::string& name)
 		     << _nh.getNamespace() << "][" << participant_name << "]");
     _manager->initialize(participant_name);
 
-  // Create publishers
-    _armature_pub	= create_publisher("DhaibaRos.Armature::Definition",
-					   "dhc::Armature", true);
-    _link_state_pub	= create_publisher("DhaibaRos.Armature::LinkState",
-					   "dhc::LinkState", false);
-    _shape_box_pub	= create_publisher("DhaibaRos.ShapeBox::Definition",
-					   "dhc::ShapeBox", true);
-    _shape_sphere_pub	= create_publisher("DhaibaRos.ShapeSphere::Definition",
-					   "dhc::ShapeSphere", true);
-    _mesh_pub		= create_publisher(
-				    "DhaibaRos.Mesh::Definition_BinaryFile",
-				    "dhc::GeometryBinaryFile", true);
-    _geometry_state_pub	= create_publisher(
-				    "DhaibaRos.PointSupplier::GeometryState",
-				    "dhc::GeometryState", false);
-
-    create_primitives(_root_link,
-		      tf::Transform({0.0, 0.0, 0.0, 1.0}, {0.0, 0.0, 0.0}));
-    std::cerr << _armature.links().size() << " armatrue links, "
-	      << _boxes.size() << " boxes, "
-	      << _spheres.size() << " spheres, "
-	      << _meshes.size() << " meshes"
-	      << std::endl;
+  // Create publishers for armature.
+    _armature_pub   = create_publisher(
+			_manager, participant_name + ".Armature::Definition",
+			"dhc::Armature", true);
+    _link_state_pub = create_publisher(
+			_manager, participant_name + ".Armature::LinkState",
+			"dhc::LinkState", false);
 		 
-  // Register callback for pulblishers.
+  // Register callback for armature pulblisher.
     Connections::connect(&_armature_pub->matched,
                          {[this](DhaibaConnect::PublisherInfo* pub,
 				 DhaibaConnect::MatchingInfo* info)
                           {
-                              pub->write(&_armature);
-                          }});
-    Connections::connect(&_shape_box_pub->matched,
-                         {[this](DhaibaConnect::PublisherInfo* pub,
-				 DhaibaConnect::MatchingInfo* info)
-                          {
-			      for (const auto& box : _boxes)
-				  pub->write(&box);
-                          }});
-	       /*
-    Connections::connect(&_shape_sphere_pub->matched,
-                         {[&spheres](DhaibaConnect::PublisherInfo* pub,
-				     DhaibaConnect::MatchingInfo* info)
-                          {
-			      for (const auto& sphere : spheres)
-				  pub->write(&sphere);
-                          }});
-	       */
-    Connections::connect(&_mesh_pub->matched,
-                         {[this](DhaibaConnect::PublisherInfo* pub,
-				 DhaibaConnect::MatchingInfo* info)
-                          {
-			      for (const auto& mesh : _meshes)
-				  pub->write(&mesh);
+			      dhc::Armature	armature;
+			      create_armature(_root_link,
+					      tf::Transform(
+						  {0.0, 0.0, 0.0, 1.0},
+						  {0.0, 0.0, 0.0}),
+					      armature);
+                              pub->write(&armature);
                           }});
 
+  // Create publishers for geometric primitives.
+    create_primitives(_root_link);
+    
   // Create publisher for link state.
     ROS_INFO_STREAM("(dhaiba_ros_bridge) Node[" << name << "] initialized.");
 }
@@ -375,61 +366,15 @@ Bridge::run() const
         if (! link_state.value().empty())
 	    _link_state_pub->write(&link_state);
 
-      //publish_geometry_state(_root_link);
-
         ros::spinOnce();
         looprate.sleep();
     }
 }
 
-DhaibaConnect::PublisherInfo*
-Bridge::create_publisher(const std::string& topicName,
-			 const std::string& typeName,
-			 bool highReliability) const
-{
-    const auto	pub = _manager->createPublisher(topicName, typeName, 
-						false, highReliability);
-    if (!pub)
-    {
-        ROS_ERROR_STREAM(
-            "(dhaiba_ros_bridge) Failed to create publisher for topic["
-	    << topicName << " of type[" << typeName << ']');
-        throw;
-    }
-
-    return pub;
-}
-
 void
-Bridge::create_primitives(const link_cp& link, const tf::Transform& Twp0)
+Bridge::create_armature(const link_cp& link, const tf::Transform& Twp0,
+			dhc::Armature& armature) const
 {
-    if (link->visual && link->visual->geometry)
-    {
-	try
-	{
-	    switch (link->visual->geometry->type)
-	    {
-	      case urdf::Geometry::BOX:
-		_boxes.push_back(create_box(link, Twp0));
-		break;
-	      case urdf::Geometry::SPHERE:
-	      //spheres.push_back(create_sphere());
-		break;
-	      case urdf::Geometry::CYLINDER:
-		break;
-	      case urdf::Geometry::MESH:
-		_meshes.push_back(create_mesh(link, Twp0));
-		break;
-	      default:
-		break;
-	    }
-	}
-	catch (const std::exception& err)
-	{
-	    ROS_ERROR_STREAM("(dhaiba_ros_bridge) " << err.what());
-	}
-    }
-
     for (const auto& child_link : link->child_links)
     {
       // Find a joint whose child_link_name is equal to the name of child_link.
@@ -458,7 +403,7 @@ Bridge::create_primitives(const link_cp& link, const tf::Transform& Twp0)
         armature_link.parentLinkName() = (*child_joint)->parent_link_name;
         armature_link.Twj0()           = mat44(Twj0);
         armature_link.tailPosition0()  = vec4(Twj0.getOrigin());
-        _armature.links().push_back(armature_link);
+        armature.links().push_back(armature_link);
 
 	_Tj0p0[armature_link.linkName()] = Tp0j0.inverse();
 
@@ -466,14 +411,43 @@ Bridge::create_primitives(const link_cp& link, const tf::Transform& Twp0)
 			 << " <== "	       << armature_link.linkName()
 			 << "\n  Twj0:  "      << armature_link.Twj0());
 
-        create_primitives(child_link, Twj0);
+        create_armature(child_link, Twj0, armature);
     }
+}
+
+void
+Bridge::create_primitives(const link_cp& link)
+{
+    if (link->visual && link->visual->geometry)
+    	_augumented_links.emplace(std::piecewise_construct,
+    				  std::forward_as_tuple(link->name),
+    				  std::forward_as_tuple(_manager, link));
+
+    for (const auto& child_link : link->child_links)
+        create_primitives(child_link);
 }
 
 void
 Bridge::create_link_state(const link_cp& link,
 			  dhc::LinkState& link_state) const
 {
+    if (link->visual && link->visual->geometry)
+    {
+	try
+	{
+	    tf::StampedTransform	Twj;
+	    _listener.lookupTransform(_root_link->name, link->name,
+				      ros::Time(0), Twj);
+	    _augumented_links.find(link->name)->second
+			     .publish_geometry_state(Twj);
+	}
+        catch (const std::exception& err)
+        {
+            ROS_WARN_STREAM("(dhaiba_ros_bridge): Failed to publish geometry state["
+			    << link->name << "]. " << err.what());
+        }
+    }
+    
     for (const auto& child_link : link->child_links)
     {
         try
@@ -484,9 +458,10 @@ Bridge::create_link_state(const link_cp& link,
             link_state.value().push_back(mat44(_Tj0p0[child_link->name]*Tpj));
 
 	    ROS_DEBUG_STREAM_NAMED("link_state", "create_link_state: "
-	    		     << link->name << " <== " << child_link->name
-	    		     << '\n' << std::fixed << std::setprecision(3)
-			     << link_state.value().back());
+				   << link->name << " <== "
+				   << child_link->name << '\n'
+				   << std::fixed << std::setprecision(3)
+				   << link_state.value().back());
         }
         catch (const std::exception& err)
         {
@@ -500,74 +475,51 @@ Bridge::create_link_state(const link_cp& link,
     }
 }
 
-Bridge::box_t
-Bridge::create_box(const link_cp& link, const tf::Transform& Twj0)
+/************************************************************************
+*  class Bridge::AugumentedLink						*
+************************************************************************/
+Bridge::AugumentedLink::AugumentedLink(DhaibaConnect::Manager* manager,
+				       const link_cp& link)
+    :_visual(link->visual),
+     _Tjo(),
+     _definition_pub(create_publisher(manager, link)),
+     _geometry_state_pub(create_publisher(manager,
+					  link->name +
+					  ".PointSupplier::GeometryState",
+					  "dhc::GeometryState", false))
 {
-    _Tjo[link->name] = transform(link->visual->origin);
-
-    box_t	box;
-    box.baseInfo() = create_base_info(link->visual->material,
-				      Twj0 * _Tjo[link->name]);
-    const auto&	dim = static_cast<const urdf::Box*>(link->visual->
-						    geometry.get())->dim;
-    box.translation().value()   = {-dim.x/2, -dim.y/2, -dim.z/2};
-    box.scaling().value()       = {dim.x, dim.y, dim.z};
-    box.divisionCount().value() = { 3, 3, 3 };
-
-    return box;
-}
-
-Bridge::sphere_t
-Bridge::create_sphere(const link_cp& link, const tf::Transform& Twj0)
-{
-    _Tjo[link->name] = transform(link->visual->origin);
-
-    sphere_t	sphere;
-    sphere.baseInfo() = create_base_info(link->visual->material,
-					 Twj0 * _Tjo[link->name]);
-    sphere.translation().value()  = { 0, 0, 0 };
-    // sphere.scaling().value()
-    // sphere.divisionCountU() = 10;
-    // sphere.divisionCountV() = 10;
-
-    return sphere;
-}
-
-Bridge::mesh_t
-Bridge::create_mesh(const link_cp& link, const tf::Transform& Twj0)
-{
-    const auto	gmesh = static_cast<const urdf::Mesh*>(link->visual->
-						       geometry.get());
-    const auto	Tjo   = transform(link->visual->origin);
-    _Tjo[link->name] = tf::Transform(Tjo.getBasis().scaled({gmesh->scale.x,
-							    gmesh->scale.y,
-							    gmesh->scale.z}),
-				     Tjo.getOrigin());
-			
-    mesh_t	mesh;
-    mesh.baseInfo() = create_base_info(link->visual->material,
-				       Twj0 * _Tjo[link->name]);
-    mesh.fileData().data() = loadMesh(gmesh->filename);
-    std::string	file_extension = "";
-    const auto	pos = gmesh->filename.rfind(".");
-    if (pos != std::string::npos)
-        file_extension = gmesh->filename.substr(pos + 1);
-    mesh.fileExtension() = file_extension;
-    mesh.description()   = gmesh->filename;
-
-    return mesh;
-}
-
-Bridge::base_info_t
-Bridge::create_base_info(const material_cp& material,
-			 const tf::Transform& Two0)
-{
-    base_info_t	base_info;
-    if (material)
+    if (_visual->geometry->type == urdf::Geometry::MESH)
     {
-	base_info.color().r() = short(255*material->color.r);
-	base_info.color().g() = short(255*material->color.g);
-	base_info.color().b() = short(255*material->color.b);
+	const auto	scale = static_cast<const urdf::Mesh*>(
+				    _visual->geometry.get())->scale;
+	const auto	Tjo   = transform(_visual->origin);
+	_Tjo = tf::Transform(Tjo.getBasis().scaled({scale.x,
+						    scale.y, scale.z}),
+			     Tjo.getOrigin());
+    }
+    else
+	_Tjo = transform(_visual->origin);
+
+    if (!_definition_pub)
+	return;
+
+    Connections::connect(&_definition_pub->matched,
+			 {[this](DhaibaConnect::PublisherInfo* pub,
+				 DhaibaConnect::MatchingInfo* into)
+			  {
+			      publish_definition();
+			  }});
+}
+
+void
+Bridge::AugumentedLink::publish_definition() const
+{
+    dhc::GeometryBaseInfo	base_info;
+    if (_visual->material)
+    {
+	base_info.color().r() = short(255*_visual->material->color.r);
+	base_info.color().g() = short(255*_visual->material->color.g);
+	base_info.color().b() = short(255*_visual->material->color.b);
     }
     else
     {
@@ -575,55 +527,83 @@ Bridge::create_base_info(const material_cp& material,
 	base_info.color().g() = 128;
 	base_info.color().b() = 128;
     }
-    base_info.transform() = mat44(Two0, true);
+    base_info.transform() = mat44(_Tjo, true);
 
-    return base_info;
+    switch (_visual->geometry->type)
+    {
+      case urdf::Geometry::BOX:
+      {
+	const auto&	dim = static_cast<const urdf::Box*>(
+				_visual->geometry.get())->dim;
+	dhc::ShapeBox	box;
+	box.baseInfo()		    = base_info;
+	box.translation().value()   = {-dim.x/2, -dim.y/2, -dim.z/2};
+	box.scaling().value()       = {dim.x, dim.y, dim.z};
+	box.divisionCount().value() = { 3, 3, 3 };
+
+	_definition_pub->write(&box);
+      }
+	break;
+
+      case urdf::Geometry::SPHERE:
+      {
+	const auto	 radius = static_cast<const urdf::Sphere*>(
+				     _visual->geometry.get())->radius;
+	dhc::ShapeSphere sphere;
+	sphere.baseInfo()	     = base_info;
+	sphere.translation().value() = { 0, 0, 0 };
+	sphere.scaling().value()     = { radius, radius, radius };
+	sphere.divisionCountU()	     = 3;
+	sphere.divisionCountV()      = 3;
+	
+	_definition_pub->write(&sphere);
+      }
+        break;
+
+      case urdf::Geometry::CYLINDER:
+      {
+	const auto	   gcylinder = static_cast<const urdf::Cylinder*>(
+					   _visual->geometry.get());
+	// dhc::ShapeCylinder cylinder;
+	// cylinder.baseInfo()		= base_info;
+	// cylinder.translation().value()	= { 0, 0, -gcylinder->length/2 };
+	// cylinder.scaling().value()	= { gcylinder->radius,
+	// 				    gcylinder->radius,
+	// 				    gcylinder->length };
+
+	// _definition_pub->write(&cylinder);
+      }
+	break;
+
+      case urdf::Geometry::MESH:
+      {
+	const auto		mesh = static_cast<const urdf::Mesh*>(
+					   _visual->geometry.get());
+	dhc::GeometryBinaryFile	file;
+	file.baseInfo()		= base_info;
+	file.fileData().data()	= loadMesh(mesh->filename);
+	const auto	pos = mesh->filename.rfind(".");
+	file.fileExtension()	= (pos != std::string::npos ?
+				   mesh->filename.substr(pos + 1) : "");
+	file.description()	= mesh->filename;
+
+	_definition_pub->write(&file);
+      }
+	break;
+
+      default:
+	ROS_ERROR_STREAM("(dhaiba_ros_bridge) Unknown geometry type["
+			 << _visual->geometry->type << ']');
+	throw;
+    }
 }
 
 void
-Bridge::publish_geometry_state(const link_cp& link) const
+Bridge::AugumentedLink::publish_geometry_state(const tf::Transform& Twj) const
 {
-    ROS_DEBUG_STREAM_NAMED(log_element, "send_visual_state: " << link->name);
-    
-    if (link->visual && link->visual->geometry)
-    {
-	tf::StampedTransform	Twj;
-
-	try
-	{
-	    _listener.lookupTransform(_root_link->name, link->name,
-				      ros::Time(0), Twj);
-	}
-        catch (const std::exception& err)
-        {
-            ROS_WARN_STREAM("(dhaiba_ros_bridge): Failed to publish geometry state["
-			    << link->name << "]. " << err.what());
-            return;
-        }
-	
-	dhc::GeometryState	gstate;
-	gstate.transform() = mat44(Twj * _Tjo[link->name], true);
-	    
-	switch (link->visual->geometry->type)
-	{
-	  case urdf::Geometry::BOX:
-	    _shape_box_pub->write(&gstate);
-	    break;
-	  case urdf::Geometry::SPHERE:
-	    _shape_sphere_pub->write(&gstate);
-	    break;
-	  case urdf::Geometry::CYLINDER:
-	    break;
-	  case urdf::Geometry::MESH:
-	    _mesh_pub->write(&gstate);
-	    break;
-	  default:
-	    break;
-	}
-    }
-
-    for (const auto& child_link : link->child_links)
-	publish_geometry_state(child_link);
+    dhc::GeometryState	state;
+    state.transform() = mat44(Twj * _Tjo, true);
+    _geometry_state_pub->write(&state);
 }
 
 }        // namespace dhaiba_ros
