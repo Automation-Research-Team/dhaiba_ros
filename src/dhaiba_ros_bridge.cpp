@@ -1,5 +1,5 @@
 /*!
-*  \file	Bridge.cpp
+*  \file	dhaiba_ros_bridge.cpp
 *  \author	Toshio UESHIBA
 *  \brief	Bridge software betwenn ROS and DhaibaWorks
 */
@@ -244,7 +244,8 @@ class Bridge
     void	create_armature(const link_cp& link,
 				const tf::Transform& Twp0,
 				dhc::Armature& armature)	const	;
-    void	create_elements(const link_cp& link)			;
+    void	create_elements(const link_cp& link,
+				const tf::Transform& Twp0)		;
     void	create_link_state(const link_cp& link,
 				  dhc::LinkState& link_state)	const	;
 
@@ -347,7 +348,8 @@ Bridge::Bridge(const std::string& name)
                           }});
 
   // Create publishers for geometric elements.
-    create_elements(_root_link);
+    create_elements(_root_link,
+		    tf::Transform({0.0, 0.0, 0.0, 1.0}, {0.0, 0.0, 0.0}));
     
   // Create publisher for link state.
     ROS_INFO_STREAM("(dhaiba_ros_bridge) Node[" << name << "] initialized.");
@@ -376,30 +378,13 @@ Bridge::create_armature(const link_cp& link, const tf::Transform& Twp0,
 {
     for (const auto& child_link : link->child_links)
     {
-      // Find a joint whose child_link_name is equal to the name of child_link.
-        const auto
-            child_joint = std::find_if(link->child_joints.cbegin(),
-                                       link->child_joints.cend(),
-                                       [&child_link](const auto& joint)
-                                       {
-                                           return (joint->child_link_name
-                                                   == child_link->name);
-                                       });
-        if (child_joint == link->child_joints.cend())
-        {
-            ROS_ERROR_STREAM("(dhaiba_ros_bridge) Internal inconsistency! Child link["
-			     << child_link->name
-			     << "] is not found in child joints of link["
-			     << link->name << "].");
-            throw;
-        }
-
-	const auto	Tp0j0 = transform((*child_joint)
-				    ->parent_to_joint_origin_transform);
+	const auto	child_joint = find_joint(link, child_link);
+	const auto	Tp0j0 = transform(child_joint
+					  ->parent_to_joint_origin_transform);
 	const auto	Twj0  = Twp0 * Tp0j0;
         dhc::Link	armature_link;
-        armature_link.linkName()       = (*child_joint)->child_link_name;
-        armature_link.parentLinkName() = (*child_joint)->parent_link_name;
+        armature_link.linkName()       = child_joint->child_link_name;
+        armature_link.parentLinkName() = child_joint->parent_link_name;
         armature_link.Twj0()           = mat44(Twj0);
         armature_link.tailPosition0()  = vec4(Twj0.getOrigin());
         armature.links().push_back(armature_link);
@@ -415,7 +400,7 @@ Bridge::create_armature(const link_cp& link, const tf::Transform& Twp0,
 }
 
 void
-Bridge::create_elements(const link_cp& link)
+Bridge::create_elements(const link_cp& link, const tf::Transform& Twp0)
 {
     if (link->visual && link->visual->geometry)
     	_elements.emplace(std::piecewise_construct,
@@ -423,7 +408,9 @@ Bridge::create_elements(const link_cp& link)
 			  std::forward_as_tuple(_manager, link));
 
     for (const auto& child_link : link->child_links)
-        create_elements(child_link);
+        create_elements(child_link,
+			Twp0 * transform(find_joint(link, child_link)
+					 ->parent_to_joint_origin_transform));
 }
 
 void
