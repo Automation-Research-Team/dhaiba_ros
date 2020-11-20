@@ -276,7 +276,9 @@ class Bridge
     ros::NodeHandle					 _nh;
     const tf::TransformListener				 _listener;
     double						 _rate;
-
+    bool						 _publish_armature;
+    bool						 _publish_elements;
+    
     urdf::ModelInterfaceSharedPtr			 _model;
     urdf::LinkConstSharedPtr				 _root_link;
     std::unordered_map<std::string, const tf::Transform> _Tj0p0;
@@ -291,6 +293,8 @@ Bridge::Bridge(const std::string& name)
     :_nh(name),
      _listener(),
      _rate(10.0),
+     _publish_armature(true),
+     _publish_elements(true),
      _model(),
      _root_link(),
      _Tj0p0(),
@@ -300,6 +304,8 @@ Bridge::Bridge(const std::string& name)
      _link_state_pub(nullptr)
 {
     _nh.param("rate", _rate, _rate);
+    _nh.param("publish_armature", _publish_armature, _publish_armature);
+    _nh.param("publish_elements", _publish_elements, _publish_elements);
 
   // Load robot model described in URDF.
     auto	description_param = std::string("robot_description");
@@ -357,21 +363,24 @@ Bridge::Bridge(const std::string& name)
 			"dhc::LinkState", false);
 		 
   // Register callback for armature pulblisher.
-    Connections::connect(&_armature_pub->matched,
-                         {[this](DhaibaConnect::PublisherInfo* pub,
-				 DhaibaConnect::MatchingInfo* info)
-                          {
-			      dhc::Armature	armature;
-			      create_armature(_root_link,
-					      tf::Transform(
-						  {0.0, 0.0, 0.0, 1.0},
-						  {0.0, 0.0, 0.0}),
-					      armature);
-                              pub->write(&armature);
-                          }});
+    if (_publish_armature)
+	Connections::connect(&_armature_pub->matched,
+			     {[this](DhaibaConnect::PublisherInfo* pub,
+				     DhaibaConnect::MatchingInfo* info)
+				 {
+				     dhc::Armature	armature;
+				     create_armature(_root_link,
+						     tf::Transform(
+							 {0.0, 0.0, 0.0, 1.0},
+							 {0.0, 0.0, 0.0}),
+						     armature);
+				     pub->write(&armature);
+				 }
+			     });
 
   // Create publishers for geometric elements.
-    create_elements(_root_link);
+    if (_publish_elements)
+	create_elements(_root_link);
     
   // Create publisher for link state.
     ROS_INFO_STREAM("(dhaiba_ros_bridge) Node[" << name << "] initialized.");
@@ -413,7 +422,7 @@ Bridge::create_armature(const link_cp& link, const tf::Transform& Twp0,
 
 	_Tj0p0[armature_link.linkName()] = Tp0j0.inverse();
 
-        ROS_DEBUG_STREAM("create_elements: " << _root_link->name
+        ROS_DEBUG_STREAM("create_armature: " << _root_link->name
 			 << " <== "	     << armature_link.linkName()
 			 << "\n  Twj0:  "    << armature_link.Twj0());
 
@@ -437,7 +446,7 @@ void
 Bridge::create_link_state(const link_cp& link,
 			  dhc::LinkState& link_state) const
 {
-    if (link->visual && link->visual->geometry)
+    if (_publish_elements && link->visual && link->visual->geometry)
     {
 	try
 	{
@@ -455,26 +464,30 @@ Bridge::create_link_state(const link_cp& link,
     
     for (const auto& child_link : link->child_links)
     {
-        try
-        {
-	    tf::StampedTransform	Tpj;
-            _listener.lookupTransform(link->name, child_link->name,
-                                      ros::Time(0), Tpj);
-            link_state.value().push_back(mat44(_Tj0p0[child_link->name]*Tpj));
+	if (_publish_armature)
+	{
+	    try
+	    {
+		tf::StampedTransform	Tpj;
+		_listener.lookupTransform(link->name, child_link->name,
+					  ros::Time(0), Tpj);
+		link_state.value().push_back(mat44(_Tj0p0[child_link->name]*
+						   Tpj));
 
-	    ROS_DEBUG_STREAM_NAMED("link_state", "create_link_state: "
-				   << link->name << " <== "
-				   << child_link->name << '\n'
-				   << std::fixed << std::setprecision(3)
-				   << link_state.value().back());
-        }
-        catch (const std::exception& err)
-        {
-            ROS_WARN_STREAM("(dhaiba_ros_bridge): Failed to publish link state["
-			    << child_link->name << "]. " << err.what());
-            link_state.value().clear();
-            break;
-        }
+		ROS_DEBUG_STREAM_NAMED("link_state", "create_link_state: "
+				       << link->name << " <== "
+				       << child_link->name << '\n'
+				       << std::fixed << std::setprecision(3)
+				       << link_state.value().back());
+	    }
+	    catch (const std::exception& err)
+	    {
+		link_state.value().push_back(mat44(_Tj0p0[child_link->name]));
+
+		ROS_WARN_STREAM("(dhaiba_ros_bridge): Failed to create link state["
+				<< child_link->name << "]. " << err.what());
+	    }
+	}
 
 	create_link_state(child_link, link_state);
     }
