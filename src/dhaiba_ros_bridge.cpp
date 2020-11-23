@@ -118,7 +118,7 @@ create_publisher(DhaibaConnect::Manager* manager,
 		 const std::string& topicName,
 		 const std::string& typeName, bool highReliability)
 {
-    const auto	pub = manager->createPublisher(topicName, typeName, 
+    const auto	pub = manager->createPublisher(topicName, typeName,
 					       false, highReliability);
     if (!pub)
     {
@@ -207,7 +207,7 @@ loadMesh(const std::string& url)
     fin.read(data.data(), fsize);
 
     ROS_DEBUG_STREAM_NAMED(log_element, "loadMesh: data size=" << data.size());
-    
+
     return data;
 }
 
@@ -251,14 +251,14 @@ class Bridge
 
 	void	publish_definition()				 const	;
 	void	publish_geometry_state(const tf::Transform& Twj) const	;
-	
+
       private:
 	const urdf::VisualConstSharedPtr	_visual;
 	tf::Transform				_Tjo;
 	DhaibaConnect::PublisherInfo* const	_definition_pub;
 	DhaibaConnect::PublisherInfo* const	_geometry_state_pub;
     };
-    
+
   public:
 		Bridge(const std::string& name)				;
 
@@ -273,17 +273,17 @@ class Bridge
 				  dhc::LinkState& link_state)	const	;
 
   private:
-    ros::NodeHandle					 _nh;
+    const ros::NodeHandle				 _nh;
     const tf::TransformListener				 _listener;
-    double						 _rate;
-    bool						 _publish_armature;
-    bool						 _publish_elements;
-    
+    const double					 _rate;
+    const bool						 _publish_armature;
+    const bool						 _publish_elements;
+
     urdf::ModelInterfaceSharedPtr			 _model;
     urdf::LinkConstSharedPtr				 _root_link;
     std::unordered_map<std::string, const tf::Transform> _Tj0p0;
     std::unordered_map<std::string, const Element>	 _elements;
-    
+
     DhaibaConnect::Manager* const			 _manager;
     DhaibaConnect::PublisherInfo*			 _armature_pub;
     DhaibaConnect::PublisherInfo*			 _link_state_pub;
@@ -292,9 +292,9 @@ class Bridge
 Bridge::Bridge(const std::string& name)
     :_nh(name),
      _listener(),
-     _rate(10.0),
-     _publish_armature(true),
-     _publish_elements(true),
+     _rate(_nh.param("rate", 10.0)),
+     _publish_armature(_nh.param("publish_armature", true)),
+     _publish_elements(_nh.param("publish_elements", true)),
      _model(),
      _root_link(),
      _Tj0p0(),
@@ -303,12 +303,8 @@ Bridge::Bridge(const std::string& name)
      _armature_pub(nullptr),
      _link_state_pub(nullptr)
 {
-    _nh.param("rate", _rate, _rate);
-    _nh.param("publish_armature", _publish_armature, _publish_armature);
-    _nh.param("publish_elements", _publish_elements, _publish_elements);
-
   // Load robot model described in URDF.
-    auto	description_param = std::string("robot_description");
+    std::string	description_param("robot_description");
     _nh.param("description_param", description_param, description_param);
     std::string	description_xml;
     if (!_nh.getParam(description_param, description_xml))
@@ -355,15 +351,18 @@ Bridge::Bridge(const std::string& name)
     _manager->initialize(participant_name);
 
   // Create publishers for armature.
-    _armature_pub   = create_publisher(
-			_manager, participant_name + ".Armature::Definition",
-			"dhc::Armature", true);
-    _link_state_pub = create_publisher(
-			_manager, participant_name + ".Armature::LinkState",
-			"dhc::LinkState", false);
-		 
+
   // Register callback for armature pulblisher.
     if (_publish_armature)
+    {
+	_armature_pub   = create_publisher(
+				_manager,
+				participant_name + ".Armature::Definition",
+				"dhc::Armature", true);
+	_link_state_pub = create_publisher(
+				_manager,
+				participant_name + ".Armature::LinkState",
+				"dhc::LinkState", false);
 	Connections::connect(&_armature_pub->matched,
 			     {[this](DhaibaConnect::PublisherInfo* pub,
 				     DhaibaConnect::MatchingInfo* info)
@@ -377,11 +376,12 @@ Bridge::Bridge(const std::string& name)
 				     pub->write(&armature);
 				 }
 			     });
+    }
 
   // Create publishers for geometric elements.
     if (_publish_elements)
 	create_elements(_root_link);
-    
+
   // Create publisher for link state.
     ROS_INFO_STREAM("(dhaiba_ros_bridge) Node[" << name << "] initialized.");
 }
@@ -461,7 +461,7 @@ Bridge::create_link_state(const link_cp& link,
 			    << link->name << "]. " << err.what());
         }
     }
-    
+
     for (const auto& child_link : link->child_links)
     {
 	if (_publish_armature)
@@ -573,7 +573,7 @@ Bridge::Element::publish_definition() const
 	sphere.scaling().value()     = { radius, radius, radius };
 	sphere.divisionCountU()	     = 3;
 	sphere.divisionCountV()      = 3;
-	
+
 	_definition_pub->write(&sphere);
       }
         break;
