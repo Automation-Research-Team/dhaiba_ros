@@ -63,16 +63,31 @@ target_link_libraries(${PROJECT_NAME}_bridge
   ${DhaibaConnectN_LIBRARY}
 )
 
-add_executable(test_note
-  src/test_note.cpp
+add_executable(test_note_pub
+  src/test_note_pub.cpp
 )
 
-add_dependencies(test_note
+add_dependencies(test_note_pub
   ${${PREOJECT_NAME}_EXPORTED_TARGETS}
   ${catkin_EXPORTED_TARGETS}
 )
 
-target_link_libraries(test_note
+target_link_libraries(test_note_pub
+  ${catkin_LIBRARIES}
+  ${roscpp_LIBRARIES}
+  ${DhaibaConnectN_LIBRARY}
+)
+
+add_executable(test_note_sub
+  src/test_note_sub.cpp
+)
+
+add_dependencies(test_note_sub
+  ${${PREOJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
+)
+
+target_link_libraries(test_note_sub
   ${catkin_LIBRARIES}
   ${roscpp_LIBRARIES}
   ${DhaibaConnectN_LIBRARY}
@@ -83,7 +98,7 @@ target_link_libraries(test_note
 #############
 install(
   TARGETS
-    ${PROJECT_NAME}_bridge
+    ${PROJECT_NAME}_bridge test_note_pub test_note_sub
   ARCHIVE
     DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY
