@@ -63,6 +63,21 @@ target_link_libraries(${PROJECT_NAME}_bridge
   ${DhaibaConnectN_LIBRARY}
 )
 
+add_executable(test_note
+  src/test_note.cpp
+)
+
+add_dependencies(test_note
+  ${${PREOJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
+)
+
+target_link_libraries(test_note
+  ${catkin_LIBRARIES}
+  ${roscpp_LIBRARIES}
+  ${DhaibaConnectN_LIBRARY}
+)
+
 #############
 ## Install ##
 #############

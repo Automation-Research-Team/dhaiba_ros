@@ -285,7 +285,7 @@ class Bridge
     std::unordered_map<std::string, const Element>	 _elements;
 
     DhaibaConnect::Manager* const			 _manager;
-    DhaibaConnect::PublisherInfo*			 _armature_pub;
+    DhaibaConnect::PublisherInfo*			 _definition_pub;
     DhaibaConnect::PublisherInfo*			 _link_state_pub;
 };
 
@@ -300,7 +300,7 @@ Bridge::Bridge(const std::string& name)
      _Tj0p0(),
      _elements(),
      _manager(DhaibaConnect::Manager::instance()),
-     _armature_pub(nullptr),
+     _definition_pub(nullptr),
      _link_state_pub(nullptr)
 {
   // Load robot model described in URDF.
@@ -327,8 +327,8 @@ Bridge::Bridge(const std::string& name)
     _model->getLinks(links);
 
   // Set root link from root frame name.
-    std::string root_frame;
-    _nh.param("root_frame", root_frame, std::string("world"));
+    std::string root_frame("world");
+    _nh.param("root_frame", root_frame, root_frame);
     const auto root_link = std::find_if(links.cbegin(), links.cend(),
                                         [&root_frame](const auto& link)
                                         { return link->name == root_frame; });
@@ -350,20 +350,16 @@ Bridge::Bridge(const std::string& name)
 		     << _nh.getNamespace() << "][" << participant_name << "]");
     _manager->initialize(participant_name);
 
-  // Create publishers for armature.
-
-  // Register callback for armature pulblisher.
+  // Create publishers and register callback for armature.
     if (_publish_armature)
     {
-	_armature_pub   = create_publisher(
-				_manager,
-				participant_name + ".Armature::Definition",
-				"dhc::Armature", true);
-	_link_state_pub = create_publisher(
-				_manager,
-				participant_name + ".Armature::LinkState",
-				"dhc::LinkState", false);
-	Connections::connect(&_armature_pub->matched,
+	_definition_pub = create_publisher(_manager,
+					   "armature.Armature::Definition",
+					   "dhc::Armature", true);
+	_link_state_pub = create_publisher(_manager,
+					   "armature.Armature::LinkState",
+					   "dhc::LinkState", false);
+	Connections::connect(&_definition_pub->matched,
 			     {[this](DhaibaConnect::PublisherInfo* pub,
 				     DhaibaConnect::MatchingInfo* info)
 				 {
