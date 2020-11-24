@@ -21,15 +21,15 @@ main()
     Connections::connect(&pubDef->matched,
 			 {[&](PublisherInfo* pub, MatchingInfo* info)
 			  {
-			      dhc::String	data;
-			      data.value() = "";
-			      pub->write(&data);
+			      dhc::String	note;
+			      note.value() = "";
+			      pub->write(&note);
 			  }});
 
-    for (dhc::String data; std::cin >> data.value(); )
+    for (dhc::String note; std::cin >> note.value(); )
     {
-	std::cout << "*** Input: " << data.value() << std::endl;
-	pubCur->write(&data);
+	std::cout << note.value() << std::endl;
+	pubCur->write(&note);
     }
 
     return 0;

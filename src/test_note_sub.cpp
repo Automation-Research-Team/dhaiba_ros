@@ -12,12 +12,12 @@ main()
     const auto	manager = Manager::instance();
     manager->initialize("DhaibaConectNoteSub");
 
-    const auto	subDef = manager->createSubscriber("myNote.Note::Definition",
-						   "dhc::String",
-						   false, true);
-    const auto	subCur = manager->createSubscriber("myNote.NOte::CurrentText",
-						   "dhc::String",
-						   false, false);
+    const auto	subDef = manager->createSubscriber(
+				"PARTICIPANT22493/myNote.Note::Definition",
+				"dhc::String", false, true);
+    const auto	subCur = manager->createSubscriber(
+				"PARTICIPANT22493/myNote.Note::CurrentText",
+				"dhc::String", false, false);
 
     Connections::connect(&subDef->newDataMessage,
 			 {[&, subDef](SubscriberInfo* sub)
@@ -31,7 +31,7 @@ main()
 				 != DhaibaConnect::ALIVE)
 				  return;
 
-			      std::cout << "  Note message: " << note.data()
+			      std::cout << "  Note message: " << note.value()
 					<< std::endl;
 			      manager->removeSubscriber(subDef);
 			  }});
@@ -49,7 +49,7 @@ main()
 				 != DhaibaConnect::ALIVE)
 				  return;
 
-			      std::cout << "  Note message: " << note.data()
+			      std::cout << "  Note message: " << note.value()
 					<< std::endl;
 			  }});
 
