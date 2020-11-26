@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>dhaiba_pybind</name>
+  <version>1.0.0</version>
+  <description>The dhaiba_pybind package</description>
+
+  <maintainer email="j.miyoshi@aist.go.jp">Jun Miyoshi</maintainer>
+
+  <license>TODO</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>genpy</depend>
+  <depend>rospy</depend>
+  <depend>python</depend>
+  <depend>pybind11</depend>
+  <depend>DhaibaConnectN</depend>
+
+</package>
+

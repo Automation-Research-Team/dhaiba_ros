@@ -5,7 +5,6 @@
 int
 main()
 {
-    using namespace std;
     using namespace DhaibaConnect;
 
     const auto	manager = Manager::instance();
@@ -26,10 +25,21 @@ main()
 			      pub->write(&note);
 			  }});
 
-    for (dhc::String note; std::cin >> note.value(); )
+    std::string data, str;
+    while (std::getline(std::cin, str))
     {
-	std::cout << note.value() << std::endl;
-	pubCur->write(&note);
+        std::cout << "getline[" << str << "]" << std::endl;
+        if (str == "---")
+        {
+            std::cout << "data[" << data << "]" << std::endl;
+            dhc::String note;
+            note.value() = data;
+            pubCur->write(&note);
+            data = "";
+            continue;
+        }
+        data += str;
+        data += "\n";
     }
 
     return 0;

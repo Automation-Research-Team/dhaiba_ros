@@ -106,3 +106,6 @@ install(
   RUNTIME
     DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+
+add_subdirectory(dhaiba_pybind)
+

@@ -6,23 +6,22 @@
 int
 main()
 {
-    using namespace std;
     using namespace DhaibaConnect;
 
     const auto	manager = Manager::instance();
     manager->initialize("DhaibaConectNoteSub");
 
     const auto	subDef = manager->createSubscriber(
-				"PARTICIPANT22493/myNote.Note::Definition",
+				"DhaibaConectNotePub/SampleNote.Note::Definition",
 				"dhc::String", false, true);
     const auto	subCur = manager->createSubscriber(
-				"PARTICIPANT22493/myNote.Note::CurrentText",
+				"DhaibaConectNotePub/SampleNote.Note::CurrentText",
 				"dhc::String", false, false);
 
     Connections::connect(&subDef->newDataMessage,
 			 {[&, subDef](SubscriberInfo* sub)
 			  {
-			      std::cout << "Note data received." << std::endl;
+			      std::cout << "Definition data received." << std::endl;
 			      dhc::String	note;
 			      SampleInfo	sampleInfo;
 			      if (!sub->takeNextData(&note, &sampleInfo))
@@ -33,14 +32,14 @@ main()
 
 			      std::cout << "  Note message: " << note.value()
 					<< std::endl;
-			      manager->removeSubscriber(subDef);
+			      // manager->removeSubscriber(subDef);
 			  }});
 
 
     Connections::connect(&subCur->newDataMessage,
 			 {[&](SubscriberInfo* sub)
 			  {
-			    //cout << "Link data received." << endl;
+			      std::cout << "CurrentText data received." << std::endl;
 			      dhc::String	note;
 			      SampleInfo	sampleInfo;
 			      if(!sub->takeNextData(&note, &sampleInfo))
@@ -53,8 +52,8 @@ main()
 					<< std::endl;
 			  }});
 
-    cout << "Press any key and return to quit: " << endl;
+    std::cout << "Press any key and return to quit: " << std::endl;
     std::string s;
-    cin >> s;
+    std::cin >> s;
     return 0;
 }
