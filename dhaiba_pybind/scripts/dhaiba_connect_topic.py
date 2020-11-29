@@ -7,7 +7,6 @@ NAME='dhaiba_connect_topic'
 import os
 import sys
 import socket
-import time
 import traceback
 from operator import itemgetter
 import genpy
@@ -15,6 +14,9 @@ import genpy
 import roslib.message
 import rosgraph
 import rospy
+
+import yaml
+import roslib.message
 
 import dhaiba_pybind
 
@@ -147,9 +149,9 @@ class CallbackPublisher(object):
                 data = msg_eval(data)
             if data is not None:
                 cur_msg = self.str_fn(data, type_information=type_information)
-                sys.stdout.write(self.prefix + cur_msg + self.suffix + '\n')
-                sys.stdout.flush()
-                self.dhaiba.write(cur_msg)
+                # sys.stdout.write(self.prefix + cur_msg + self.suffix + '\n')
+                # sys.stdout.flush()
+                self.dhaiba.write(self.prefix + cur_msg + self.suffix)
         except IOError:
             self.done = True
         except:
@@ -191,7 +193,7 @@ def _cmd_pub(argv):
     from optparse import OptionParser
 
     args = argv[2:]
-    parser = OptionParser(usage="usage: %prog pub /topic fastrtps_participant fastrtps_topic", prog=argv[0])
+    parser = OptionParser(usage="usage: %prog pub Topic(ROS) Participant Topic", prog=argv[0])
     if len(args) == 0:
         parser.error("topic must be specified")
     topic = rosgraph.names.script_resolve_name(NAME+'Pub', args[0])
@@ -208,23 +210,51 @@ def _cmd_pub(argv):
     except socket.error:
         sys.stderr.write("ERROR(_cmd_pub): Network communication failed.\n")
 
+class CallbackSubscriber(object):
+    def __init__(self, topic, msg_type):
+        if topic and topic[-1] == '/':
+            topic = topic[:-1]
+        self.msg_class = roslib.message.get_message_class(msg_type)
+        self.pub = rospy.Publisher(topic, self.msg_class, queue_size=100)
+
+    def callback(self, data):
+        # sys.stdout.write(data+'\n')
+        # sys.stdout.flush()
+
+        loaded = yaml.load_all(data)
+        print('loaded:', loaded)
+
+        if loaded is not None:
+            for doc in loaded:
+                if doc is not None:
+                    msg = self.msg_class()
+                    genpy.message.fill_message_args(msg, [doc])
+                    print('msg:', msg)
+                    self.pub.publish(msg)
+
 def _cmd_sub(argv):
     from optparse import OptionParser
 
     args = argv[2:]
-    parser = OptionParser(usage="usage: %prog sub fastrtps_participant fastrtps_topic", prog=argv[0])
+    parser = OptionParser(usage="usage: %prog sub Participant Topic Topic(ROS) MsgType(ROS)", prog=argv[0])
     if len(args) == 0:
         parser.error("topic must be specified")
     fastrtps_participant = args[0]
     fastrtps_topic = args[1]
+    ros_topic = args[2]
+    ros_msg_type = args[3]
 
     rospy.init_node(NAME, anonymous=True)
-    dhaiba = dhaiba_pybind.note_subscriber(fastrtps_participant, fastrtps_topic)
+
+    cb = CallbackSubscriber(ros_topic, ros_msg_type)
+
+    dhaiba = dhaiba_pybind.note_subscriber(
+                        fastrtps_participant, fastrtps_topic, cb.callback)
 
 def _usage(cmd):
     print("""usage:
-\t%s pub TopicName\t\tpublish
-\t%s sub TopicName\t\tsubscribe
+\t%s pub Participant Topic\t\tpublish to DhaibaConnect from Topic(ROS)
+\t%s sub Participant Topic Topic(ROS) MsgType(ROS)\t\tsubscribe from DhaibaConnect, publish to Topic(ROS)
 """ % (cmd, cmd))
     sys.exit(getattr(os, 'EX_USAGE', 1))
 

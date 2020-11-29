@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include <pybind11/pybind11.h>
+#include <pybind11/functional.h>
 
 #include "dhaiba.h"
 
@@ -22,7 +23,7 @@ PYBIND11_MODULE(LIBRARY_NAME, m) {
 
     py::class_<note_subscriber>(m, "note_subscriber")
         .def(py::init<>())
-        .def(py::init<const std::string&, const std::string&>())
+        .def(py::init<const std::string&, const std::string&, py::function>())
         .def("my_test", &note_subscriber::my_test)
         ;
 

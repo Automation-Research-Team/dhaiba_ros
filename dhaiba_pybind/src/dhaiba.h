@@ -37,10 +37,16 @@ public:
 
     note_subscriber(
                 const std::string& participantName,
-                const std::string& topicNameStartsWith
+                const std::string& topicNameStartsWith,
+                const std::function<void(const std::string&)>& callback
                 );
 
     int my_test() { return 2; }
+
+private:
+    SubscriberInfo* subDef;
+    SubscriberInfo* subCur;
+
 };
 
 } /* namespace dhaiba_pybind */
