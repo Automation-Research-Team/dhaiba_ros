@@ -221,7 +221,7 @@ class CallbackSubscriber(object):
         # sys.stdout.write(data+'\n')
         # sys.stdout.flush()
 
-        loaded = yaml.load_all(data)
+        loaded = yaml.load_all(data, Loader=yaml.CLoader)
         print('loaded:', loaded)
 
         if loaded is not None:
@@ -251,10 +251,75 @@ def _cmd_sub(argv):
     dhaiba = dhaiba_pybind.note_subscriber(
                         fastrtps_participant, fastrtps_topic, cb.callback)
 
+class CallbackService(object):
+    def __init__(self, service, srv_type, dhaiba_pub):
+        if service and service[-1] == '/':
+            service = service[:-1]
+        self.srv_class = roslib.message.get_service_class(srv_type)
+        self.srv_proxy = rospy.ServiceProxy(service, self.srv_class)
+        self.dhaiba_pub = dhaiba_pub
+
+    def callback(self, data):
+        # sys.stdout.write(data+'\n')
+        # sys.stdout.flush()
+
+        loaded = yaml.load_all(data, Loader=yaml.CLoader)
+        print('loaded:', loaded)
+        counter = 0
+
+        if loaded is not None:
+            for doc in loaded:
+                req = self.srv_class._request_class()
+                # print('req 1:', type(req), len(req.__slots__))
+                if doc is not None:
+                    genpy.message.fill_message_args(req, [doc])
+                # print('req 2:', req)
+                res = self.srv_proxy.call(req)
+                print('res:', type(res), str(res))
+                counter += 1
+                if res is not None:
+                    self.dhaiba_pub.write(str(res))
+
+        if counter <= 0:
+            req = self.srv_class._request_class()
+            # print('req:', type(req), len(req.__slots__))
+            if len(req.__slots__) <= 0:
+                res = self.srv_proxy.call(req)
+                print('res:', type(res), str(res))
+                if res is not None:
+                    self.dhaiba_pub.write(str(res))
+
+def _cmd_srv(argv):
+    from optparse import OptionParser
+
+    args = argv[2:]
+    parser = OptionParser(usage="usage: %prog srv Participant Topic(sub) Topic(pub) Service(ROS) SrvType(ROS)", prog=argv[0])
+    if len(args) == 0:
+        parser.error("topic must be specified")
+    fastrtps_participant = args[0]
+    fastrtps_topic_sub = args[1]
+    fastrtps_topic_pub = args[2]
+    ros_service = args[3]
+    ros_srv_type = args[4]
+
+    rospy.init_node(NAME, anonymous=True)
+
+    dhaiba_pub = dhaiba_pybind.note_publisher(
+                fastrtps_participant, fastrtps_topic_pub)
+
+    cb = CallbackService(ros_service, ros_srv_type, dhaiba_pub)
+
+    dhaiba_sub = dhaiba_pybind.note_subscriber(
+                                fastrtps_participant,
+                                fastrtps_participant + '/' + fastrtps_topic_sub,
+                                cb.callback
+                                )
+
 def _usage(cmd):
     print("""usage:
 \t%s pub Participant Topic\t\tpublish to DhaibaConnect from Topic(ROS)
 \t%s sub Participant Topic Topic(ROS) MsgType(ROS)\t\tsubscribe from DhaibaConnect, publish to Topic(ROS)
+\t%s srv Participant Topic(sub) Topic(pub) Service(ROS) SrvType(ROS)\t\tsubscribe from DhaibaConnect, call to Serivce(ROS), publish response to DhaibaConnect
 """ % (cmd, cmd))
     sys.exit(getattr(os, 'EX_USAGE', 1))
 
@@ -271,6 +336,8 @@ def main(argv=None):
             _cmd_pub(argv)
         elif command == 'sub':
             _cmd_sub(argv)
+        elif command == 'srv':
+            _cmd_srv(argv)
         else:
             _usage(argv[0])
     except KeyboardInterrupt: pass

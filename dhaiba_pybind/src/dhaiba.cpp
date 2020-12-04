@@ -10,8 +10,16 @@ note_publisher::note_publisher(
                 const std::string& topicNameStartsWith
                 )
 {
+    std::cout << "\n#note_publisher# "
+                << participantName << " " << topicNameStartsWith << std::endl;
+
     const auto manager = Manager::instance();
-    manager->initialize(participantName);
+    if (manager->participantName() != participantName ||
+        ! manager->isInitialized())
+    {
+        manager->initialize(participantName);
+        std::cout << "\n#note_publisher# manager initialize" << std::endl;
+    }
 
     pubDef = manager->createPublisher(
                                 topicNameStartsWith + "::Definition",
@@ -43,8 +51,16 @@ note_subscriber::note_subscriber(
                 const std::function<void(const std::string&)>& callback
                 )
 {
+    std::cout << "\n#note_subscriber# "
+                << participantName << " " << topicNameStartsWith << std::endl;
+
     const auto manager = Manager::instance();
-    manager->initialize(participantName);
+    if (manager->participantName() != participantName ||
+        ! manager->isInitialized())
+    {
+        manager->initialize(participantName);
+        std::cout << "\n#note_subscriber# manager initialize" << std::endl;
+    }
 
     const auto subDef = manager->createSubscriber(
                                 topicNameStartsWith + "::Definition",
