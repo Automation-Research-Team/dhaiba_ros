@@ -2,7 +2,7 @@
 
 from __future__ import division, print_function
 
-NAME='dhaiba_connect_topic'
+NAME='dhaiba_ros_bridge'
 
 import os
 import sys

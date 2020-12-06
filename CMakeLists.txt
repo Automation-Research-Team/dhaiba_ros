@@ -39,10 +39,10 @@ set(PYTHON_EXECUTABLE /usr/bin/python)
 set(pybind11_DIR /usr/local/lib/python2.7/dist-packages/pybind11_cmake)
 find_package(pybind11 REQUIRED)
 
-set(PYBIND11_CPP_STANDARD -std=c++14)
+set(DHAIBA_PYBIND "dhaiba_pybind")
 
 add_definitions(-DVERSION_INFO=\"${PROJECT_NAME}_VERSION\")
-#add_definitions(-DLIBRARY_NAME=${PROJECT})
+add_definitions(-DLIBRARY_NAME=${PROJECT_NAME})
 add_definitions(-D__MY_TEST__ -g -Wall)
 
 if (NOT "${PROJECT_NAME}_BUILDTOOL_DEPENDS")
@@ -65,19 +65,19 @@ catkin_package(
     roscpp
     geometry_msgs
   LIBRARIES
-    ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}/../${PROJECT_NAME}/${PROJECT}.so
+    ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}/../${PROJECT_NAME}/${PROJECT_NAME}.so
 )
 
-add_executable(${PROJECT_NAME}_bridge
-  src/dhaiba_ros_bridge.cpp
+add_executable(urdf_publisher
+  src/urdf_publisher.cpp
 )
 
-add_dependencies(${PROJECT_NAME}_bridge
+add_dependencies(urdf_publisher
   ${${PREOJECT_NAME}_EXPORTED_TARGETS}
   ${catkin_EXPORTED_TARGETS}
 )
 
-target_link_libraries(${PROJECT_NAME}_bridge
+target_link_libraries(urdf_publisher
   ${catkin_LIBRARIES}
   ${roscpp_LIBRARIES}
   ${URDFDOM_LIBRARIES}
@@ -133,15 +133,7 @@ set_target_properties(${PROJECT_NAME}
   PROPERTIES
     PREFIX "${PYTHON_MODULE_PREFIX}"
     SUFFIX "${PYTHON_MODULE_EXTENSION}"
-)
-
-set_target_properties(${PROJECT_NAME}
-  PROPERTIES
     CXX_VISIBILITY_PRESET "hidden"
-)
-
-set_target_properties(${PROJECT_NAME}
-  PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}/../${PROJECT_NAME}
 )
 
@@ -150,7 +142,7 @@ set_target_properties(${PROJECT_NAME}
 #############
 install(
   TARGETS
-    ${PROJECT_NAME}_bridge test_note_pub test_note_sub
+    urdf_publisher test_note_pub test_note_sub
   ARCHIVE
     DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY
@@ -161,6 +153,6 @@ install(
 
 install(
   PROGRAMS
-    scrips/dhaiba_connect_topic.py
+    scrips/dhaiba_ros_bridge.py
     DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

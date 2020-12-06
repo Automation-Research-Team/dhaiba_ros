@@ -95,8 +95,8 @@
     <link name="link_ee"/>
   </xacro:macro>
 
-  <link name="world"/>
-  <xacro:test_arm parent="world">
+  <link name="base_link"/>
+  <xacro:test_arm parent="base_link">
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </xacro:test_arm>
 

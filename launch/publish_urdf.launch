@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+<launch>
+
+  <arg name="description_param"	default="/robot_description"/>
+  <arg name="root_frame"	default="world"/>
+  <arg name="rate"		default="10.0"/>
+  <arg name="publish_armature"	default="true"/>
+  <arg name="publish_elements"	default="true"/>
+
+  <env name="ROSCONSOLE_CONFIG_FILE"
+       value="$(find dhaiba_ros)/config/custom_rosconsole.conf"/>
+
+  <node name="urdf_publisher" pkg="dhaiba_ros" type="urdf_publisher"
+  	output="screen">
+    <param name="description_param"	value="$(arg description_param)"/>
+    <param name="root_frame"		value="$(arg root_frame)"/>
+    <param name="rate"			value="$(arg rate)"/>
+    <param name="publish_armature"	value="$(arg publish_armature)"/>
+    <param name="publish_elements"	value="$(arg publish_elements)"/>
+  </node>
+
+</launch>

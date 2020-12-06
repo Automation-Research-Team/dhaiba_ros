@@ -1,0 +1,33 @@
+<?xml version="1.0" ?>
+<launch>
+
+  <arg name="name"	default="dhaiba_ros_bridge"/>
+  <arg name="teleport"	default="true"/>
+
+  <arg name="msg"	value="/turtle1/teleport_absolute"
+			if="$(arg teleport)"/>
+  <arg name="msg"	value="/turtle_pointer/tf2_frames"
+			unless="$(arg teleport)"/>
+  <arg name="type"	value="turtlesim/TeleportAbsolute"
+			if="$(arg teleport)"/>
+  <arg name="type"	value="tf2_msgs/FrameGraph"
+			unless="$(arg teleport)"/>
+  <arg name="op"	value="t" if="$(arg teleport)"/>
+  <arg name="op"	value="f" unless="$(arg teleport)"/>
+
+  <include file="$(find turtle_tf2)/launch/turtle_tf2_demo.launch"/>
+
+  <include file="$(find dhaiba_ros)/launch/run.launch">
+    <arg name="name"	value="$(arg name)"/>
+    <arg name="op"	value="srv"/>
+    <arg name="msg"	value="$(arg msg)"/>
+    <arg name="type"	value="$(arg type)"/>
+  </include>
+
+  <node name="sub" pkg="dhaiba_ros" type="sub.py"
+  	args="$(arg name) Response.Note"/>
+
+  <node name="pub" pkg="dhaiba_ros" type="pub.py"
+  	args="$(arg name) Request.Note $(arg op)"/>
+
+</launch>

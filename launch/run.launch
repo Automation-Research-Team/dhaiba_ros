@@ -1,22 +1,23 @@
 <?xml version="1.0" ?>
 <launch>
 
-  <arg name="description_param"	default="/robot_description"/>
-  <arg name="root_frame"	default="world"/>
-  <arg name="rate"		default="10.0"/>
-  <arg name="publish_armature"	default="true"/>
-  <arg name="publish_elements"	default="true"/>
+  <arg name="name"	default="dhaiba_ros_bridge"/>
+  <arg name="op"	default="pub"/>
+  <arg name="msg"	default="/tf"/>
+  <arg name="dw_msg"	default="tf"/>
+  <arg name="type"	default="tf2_msgs/TFMessage"/>
 
-  <env name="ROSCONSOLE_CONFIG_FILE"
-       value="$(find dhaiba_ros)/config/custom_rosconsole.conf"/>
-    
-  <node name="dhaiba_ros_bridge" pkg="dhaiba_ros" type="dhaiba_ros_bridge"
-  	output="screen">
-    <param name="description_param"	value="$(arg description_param)"/>
-    <param name="root_frame"		value="$(arg root_frame)"/>
-    <param name="rate"			value="$(arg rate)"/>
-    <param name="publish_armature"	value="$(arg publish_armature)"/>
-    <param name="publish_elements"	value="$(arg publish_elements)"/>
-  </node>
+  <node name="$(arg name)" pkg="dhaiba_ros" type="dhaiba_ros_bridge.py"
+  	args="$(arg op) $(arg msg) $(arg name) $(arg dw_msg).Note"
+	if="$(eval op == 'pub')"/>
+
+  <node name="$(arg name)" pkg="dhaiba_ros" type="dhaiba_ros_bridge.py"
+  	args="$(arg op) $(arg name) $(arg dw_msg).Note $(arg msg) $(arg type)"
+	if="$(eval op == 'sub')"/>
+
+  <node name="$(arg name)" pkg="dhaiba_ros" type="dhaiba_ros_bridge.py"
+  	args="$(arg op) $(arg name)
+	      Request.Note Response.Note $(arg msg) $(arg type)"
+	if="$(eval op == 'srv')"/>
 
 </launch>

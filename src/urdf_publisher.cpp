@@ -1,7 +1,7 @@
 /*!
-*  \file	dhaiba_ros_bridge.cpp
+*  \file	urdf_publisher.cpp
 *  \author	Toshio UESHIBA
-*  \brief	Bridge software betwenn ROS and DhaibaWorks
+*  \brief	Bridge software for publishing URDF and TF to DhaibaWorks
 */
 #include <ros/ros.h>
 #include <ros/package.h>
@@ -123,7 +123,7 @@ create_publisher(DhaibaConnect::Manager* manager,
     if (!pub)
     {
         ROS_ERROR_STREAM(
-            "(dhaiba_ros_bridge) Failed to create publisher for topic["
+            "(urdf_publisher) Failed to create publisher for topic["
 	    << topicName << "] of type[" << typeName << ']');
         throw;
     }
@@ -155,7 +155,7 @@ create_publisher(DhaibaConnect::Manager* manager,
 	typeName  = "dhc::GeometryBinaryFile";
 	break;
       default:
-	ROS_ERROR_STREAM("(dhaiba_ros_bridge) Unknown geometry type["
+	ROS_ERROR_STREAM("(urdf_publisher) Unknown geometry type["
 			 << link->visual->geometry->type << ']');
 	return nullptr;
     }
@@ -225,7 +225,7 @@ find_joint(const urdf::LinkConstSharedPtr& link,
 				     });
     if (joint == link->child_joints.cend())
     {
-	ROS_ERROR_STREAM("(dhaiba_ros_bridge) Internal inconsistency! Child link["
+	ROS_ERROR_STREAM("(urdf_publisher) Internal inconsistency! Child link["
 			 << child_link->name
 			 << "] is not found in child joints of link["
 			 << link->name << "].");
@@ -236,9 +236,9 @@ find_joint(const urdf::LinkConstSharedPtr& link,
 }
 
 /************************************************************************
-*  class Bridge								*
+*  class URDFPublisher							*
 ************************************************************************/
-class Bridge
+class URDFPublisher
 {
   private:
     using link_cp = urdf::LinkConstSharedPtr;
@@ -260,7 +260,7 @@ class Bridge
     };
 
   public:
-		Bridge(const std::string& name)				;
+		URDFPublisher(const std::string& name)				;
 
     void	run()						const	;
 
@@ -289,7 +289,7 @@ class Bridge
     DhaibaConnect::PublisherInfo*			 _link_state_pub;
 };
 
-Bridge::Bridge(const std::string& name)
+URDFPublisher::URDFPublisher(const std::string& name)
     :_nh(name),
      _listener(),
      _rate(_nh.param("rate", 10.0)),
@@ -309,7 +309,7 @@ Bridge::Bridge(const std::string& name)
     std::string	description_xml;
     if (!_nh.getParam(description_param, description_xml))
     {
-        ROS_ERROR_STREAM("(dhaiba_ros_bridge) Failed to get parameter["
+        ROS_ERROR_STREAM("(urdf_publisher) Failed to get parameter["
                          << description_param << ']');
         throw;
     }
@@ -317,7 +317,7 @@ Bridge::Bridge(const std::string& name)
     _model = urdf::parseURDF(description_xml);
     if (!_model)
     {
-        ROS_ERROR_STREAM("(dhaiba_ros_bridge) Failed to load urdf in parameter["
+        ROS_ERROR_STREAM("(urdf_publisher) Failed to load urdf in parameter["
                          << description_param << ']');
         throw;
     }
@@ -334,13 +334,13 @@ Bridge::Bridge(const std::string& name)
                                         { return link->name == root_frame; });
     if (root_link == links.cend())
     {
-        ROS_WARN_STREAM("(dhaiba_ros_bridge) Frame \""
+        ROS_WARN_STREAM("(urdf_publisher) Frame \""
                         << root_frame << "\" not found.");
         _root_link = _model->getRoot();
     }
     else
         _root_link = *root_link;
-    ROS_INFO_STREAM("(dhaiba_ros_bridge) Set root frame to \""
+    ROS_INFO_STREAM("(urdf_publisher) Set root frame to \""
                     << _root_link->name << "\".");
 
   // Initialize manager.
@@ -379,11 +379,11 @@ Bridge::Bridge(const std::string& name)
 	create_elements(_root_link);
 
   // Create publisher for link state.
-    ROS_INFO_STREAM("(dhaiba_ros_bridge) Node[" << name << "] initialized.");
+    ROS_INFO_STREAM("(urdf_publisher) Node[" << name << "] initialized.");
 }
 
 void
-Bridge::run() const
+URDFPublisher::run() const
 {
     ros::Rate looprate(_rate);
 
@@ -400,7 +400,7 @@ Bridge::run() const
 }
 
 void
-Bridge::create_armature(const link_cp& link, const tf::Transform& Twp0,
+URDFPublisher::create_armature(const link_cp& link, const tf::Transform& Twp0,
 			dhc::Armature& armature) const
 {
     for (const auto& child_link : link->child_links)
@@ -427,7 +427,7 @@ Bridge::create_armature(const link_cp& link, const tf::Transform& Twp0,
 }
 
 void
-Bridge::create_elements(const link_cp& link)
+URDFPublisher::create_elements(const link_cp& link)
 {
     if (link->visual && link->visual->geometry)
     	_elements.emplace(std::piecewise_construct,
@@ -439,8 +439,8 @@ Bridge::create_elements(const link_cp& link)
 }
 
 void
-Bridge::create_link_state(const link_cp& link,
-			  dhc::LinkState& link_state) const
+URDFPublisher::create_link_state(const link_cp& link,
+				 dhc::LinkState& link_state) const
 {
     if (_publish_elements && link->visual && link->visual->geometry)
     {
@@ -453,7 +453,7 @@ Bridge::create_link_state(const link_cp& link,
 	}
         catch (const std::exception& err)
         {
-            ROS_WARN_STREAM("(dhaiba_ros_bridge): Failed to publish geometry state["
+            ROS_WARN_STREAM("(urdf_publisher): Failed to publish geometry state["
 			    << link->name << "]. " << err.what());
         }
     }
@@ -480,7 +480,7 @@ Bridge::create_link_state(const link_cp& link,
 	    {
 		link_state.value().push_back(mat44(_Tj0p0[child_link->name]));
 
-		ROS_WARN_STREAM("(dhaiba_ros_bridge): Failed to create link state["
+		ROS_WARN_STREAM("(urdf_publisher): Failed to create link state["
 				<< child_link->name << "]. " << err.what());
 	    }
 	}
@@ -490,10 +490,10 @@ Bridge::create_link_state(const link_cp& link,
 }
 
 /************************************************************************
-*  class Bridge::Element						*
+*  class URDFPublisher::Element						*
 ************************************************************************/
-Bridge::Element::Element(DhaibaConnect::Manager* manager,
-			 const link_cp& link)
+URDFPublisher::Element::Element(DhaibaConnect::Manager* manager,
+				const link_cp& link)
     :_visual(link->visual),
      _Tjo(),
      _definition_pub(create_publisher(manager, link)),
@@ -526,7 +526,7 @@ Bridge::Element::Element(DhaibaConnect::Manager* manager,
 }
 
 void
-Bridge::Element::publish_definition() const
+URDFPublisher::Element::publish_definition() const
 {
     dhc::GeometryBaseInfo	base_info;
     if (_visual->material)
@@ -606,14 +606,14 @@ Bridge::Element::publish_definition() const
 	break;
 
       default:
-	ROS_ERROR_STREAM("(dhaiba_ros_bridge) Unknown geometry type["
+	ROS_ERROR_STREAM("(urdf_publisher) Unknown geometry type["
 			 << _visual->geometry->type << ']');
 	throw;
     }
 }
 
 void
-Bridge::Element::publish_geometry_state(const tf::Transform& Twj) const
+URDFPublisher::Element::publish_geometry_state(const tf::Transform& Twj) const
 {
     dhc::GeometryState	state;
     state.transform() = mat44(Twj * _Tjo, true);
@@ -628,14 +628,14 @@ Bridge::Element::publish_geometry_state(const tf::Transform& Twj) const
 int
 main(int argc, char** argv)
 {
-    ros::init(argc, argv, "dhaiba_ros_bridge");
+    ros::init(argc, argv, "urdf_publisher");
     // ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME,
     //                                ros::console::levels::Debug);
 
     try
     {
-        const dhaiba_ros::Bridge        bridge("~");
-        bridge.run();
+        const dhaiba_ros::URDFPublisher	publisher("~");
+        publisher.run();
     }
     catch (const std::exception& err)
     {
