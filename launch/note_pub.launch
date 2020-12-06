@@ -1,0 +1,8 @@
+<?xml version="1.0" ?>
+<launch>
+
+  <node name="test_note_pub" pkg="dhaiba_ros" type="test_note_pub"
+  	output="screen">
+  </node>
+
+</launch>

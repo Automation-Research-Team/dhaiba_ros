@@ -2,7 +2,7 @@
 
 #include "dhaiba.h"
 
-namespace dhaiba_pybind
+namespace dhaiba_ros
 {
 
 note_publisher::note_publisher(
@@ -101,5 +101,4 @@ note_subscriber::note_subscriber(
     std::cin >> s;
 }
 
-} /* namespace dhaiba_pybind */
-
+} /* namespace dhaiba_ros */

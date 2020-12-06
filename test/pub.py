@@ -2,7 +2,7 @@
 
 import sys
 import rospy
-import dhaiba_pybind
+import dhaiba_ros
 
 participant = "DhaibaConectNotePub"
 topic = "SampleNote.Note"
@@ -28,9 +28,8 @@ if len(sys.argv) >= 4:
         data = data_FrameGraph
 
 print ">>>>> note_pub <<<<< %s %s" % (participant, topic)
-obj = dhaiba_pybind.note_publisher(participant, topic)
+obj = dhaiba_ros.note_publisher(participant, topic)
 
 for i in range(2):
     obj.write(data)
     rospy.rostime.wallsleep(0.5)
-

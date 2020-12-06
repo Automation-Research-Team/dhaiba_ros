@@ -12,7 +12,7 @@ PYBIND11_MODULE(LIBRARY_NAME, m) {
         Pybind11 dhaiba plugin
     )pbdoc";
 
-    using namespace dhaiba_pybind;
+    using namespace dhaiba_ros;
 
     py::class_<note_publisher>(m, "note_publisher")
         .def(py::init<>())
@@ -33,4 +33,3 @@ PYBIND11_MODULE(LIBRARY_NAME, m) {
     m.attr("__version__") = "dev";
 #endif
 }
-

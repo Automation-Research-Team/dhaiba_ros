@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import sys
-import dhaiba_pybind
+import dhaiba_ros
 
 def callback(data):
     print('callback:', data)
@@ -14,5 +14,4 @@ if len(sys.argv) >= 3:
     topic = sys.argv[2]
 
 print ">>>>> note_sub <<<<< %s %s" % (participant, topic)
-obj = dhaiba_pybind.note_subscriber(participant, participant+'/'+topic, callback)
-
+obj = dhaiba_ros.note_subscriber(participant, participant+'/'+topic, callback)

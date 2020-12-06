@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(dhaiba_ros)
+set(${PROJECT_NAME}_VERSION 1.0.0)
 
 ## Compile as C++14
 add_compile_options(-w)
@@ -19,6 +20,7 @@ find_package(catkin REQUIRED
 )
 
 set(CMAKE_MODULE_PATH $ENV{CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR})
+
 find_package(DhaibaConnectN REQUIRED)
 if (${DhaibaConnectN_FOUND})
   message(STATUS "DhaibaConnectN found")
@@ -32,6 +34,21 @@ else()
   message(STATUS "DhaibaConnectN_LIBRARY: ${DhaibaConnectN_LIBRARY}")
 endif()
 
+set(PYTHON_EXECUTABLE /usr/bin/python)
+
+set(pybind11_DIR /usr/local/lib/python2.7/dist-packages/pybind11_cmake)
+find_package(pybind11 REQUIRED)
+
+set(PYBIND11_CPP_STANDARD -std=c++14)
+
+add_definitions(-DVERSION_INFO=\"${PROJECT_NAME}_VERSION\")
+#add_definitions(-DLIBRARY_NAME=${PROJECT})
+add_definitions(-D__MY_TEST__ -g -Wall)
+
+if (NOT "${PROJECT_NAME}_BUILDTOOL_DEPENDS")
+  set(${PROJECT_NAME}_BUILDTOOL_DEPENDS "catkin")
+endif()
+
 ###########
 ## Build ##
 ###########
@@ -41,10 +58,14 @@ include_directories(
   ${DhaibaConnectN_INCLUDE_DIR}
 )
 
+catkin_python_setup()
+
 catkin_package(
   CATKIN_DEPENDS
     roscpp
     geometry_msgs
+  LIBRARIES
+    ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}/../${PROJECT_NAME}/${PROJECT}.so
 )
 
 add_executable(${PROJECT_NAME}_bridge
@@ -93,6 +114,37 @@ target_link_libraries(test_note_sub
   ${DhaibaConnectN_LIBRARY}
 )
 
+add_library(${PROJECT_NAME}
+  SHARED src/pybind11_modules.cpp src/dhaiba.cpp)
+
+target_include_directories(${PROJECT_NAME}
+  PRIVATE ${PYBIND11_INCLUDE_DIR}
+  PRIVATE ${pybind11_INCLUDE_DIR}
+  PRIVATE ${PYTHON_INCLUDE_DIRS}
+  PRIVATE ${DhaibaConnectN_INCLUDE_DIR}
+)
+
+target_link_libraries(${PROJECT_NAME}
+  ${PYTHON_LIBRARIES}
+  ${DhaibaConnectN_LIBRARY}
+)
+
+set_target_properties(${PROJECT_NAME}
+  PROPERTIES
+    PREFIX "${PYTHON_MODULE_PREFIX}"
+    SUFFIX "${PYTHON_MODULE_EXTENSION}"
+)
+
+set_target_properties(${PROJECT_NAME}
+  PROPERTIES
+    CXX_VISIBILITY_PRESET "hidden"
+)
+
+set_target_properties(${PROJECT_NAME}
+  PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}/../${PROJECT_NAME}
+)
+
 #############
 ## Install ##
 #############
@@ -107,5 +159,8 @@ install(
     DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
-add_subdirectory(dhaiba_pybind)
-
+install(
+  PROGRAMS
+    scrips/dhaiba_connect_topic.py
+    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)

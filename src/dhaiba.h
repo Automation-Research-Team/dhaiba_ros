@@ -4,7 +4,7 @@
 #include <DhaibaConnectN/Common.h>
 #include <DhaibaConnectN/idl/TopicDataTypeCore.h>
 
-namespace dhaiba_pybind
+namespace dhaiba_ros
 {
     using namespace DhaibaConnect;
 
@@ -49,7 +49,6 @@ private:
 
 };
 
-} /* namespace dhaiba_pybind */
+} /* namespace dhaiba_ros */
 
 #endif /* __DHAIBA_H */
-
