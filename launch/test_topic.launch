@@ -1,26 +1,27 @@
 <?xml version="1.0" ?>
 <launch>
 
-  <arg name="pub_name"	default="dhaiba_ros_publisher"/>
-  <arg name="sub_name"	default="dhaiba_ros_subscriber"/>
-  <arg name="in"	default="/tf"/>
-  <arg name="out"	default="/my_tf"/>
-  <arg name="dw_msg"	default="tf"/>
-  <arg name="type"	default="tf2_msgs/TFMessage"/>
+  <arg name="participant"	default="dhaiba_ros_bridge"/>
+  <arg name="element"		default="tf"/>
+  <arg name="in"		default="/tf"/>
+  <arg name="out"		default="/my_tf"/>
+  <arg name="type"		default="tf2_msgs/TFMessage"/>
+
+  <include file="$(find turtle_tf2)/launch/turtle_tf2_demo.launch"/>
 
   <include file="$(find dhaiba_ros)/launch/run.launch">
-    <arg name="name"	value="$(arg pub_name)"/>
-    <arg name="op"	value="pub"/>
-    <arg name="msg"	value="$(arg in)"/>
-    <arg name="dw_msg"	value="$(arg dw_msg)"/>
+    <arg name="op"		value="pub"/>
+    <arg name="participant"	value="$(arg participant)"/>
+    <arg name="element"		value="$(arg element)"/>
+    <arg name="name"		value="$(arg in)"/>
   </include>
 
   <include file="$(find dhaiba_ros)/launch/run.launch">
-    <arg name="name"	value="$(arg sub_name)"/>
-    <arg name="op"	value="sub"/>
-    <arg name="msg"	value="$(arg out)"/>
-    <arg name="dw_msg"	value="$(arg pub_name)/$(arg dw_msg)"/>
-    <arg name="type"	value="$(arg type)"/>
+    <arg name="op"		value="sub"/>
+    <arg name="participant"	value="$(arg participant)"/>
+    <arg name="element"		value="$(arg element)"/>
+    <arg name="name"		value="$(arg out)"/>
+    <arg name="type"		value="$(arg type)"/>
   </include>
 
 </launch>

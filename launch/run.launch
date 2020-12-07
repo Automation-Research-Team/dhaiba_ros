@@ -1,23 +1,33 @@
 <?xml version="1.0" ?>
 <launch>
 
-  <arg name="name"	default="dhaiba_ros_bridge"/>
-  <arg name="op"	default="pub"/>
-  <arg name="msg"	default="/tf"/>
-  <arg name="dw_msg"	default="tf"/>
-  <arg name="type"	default="tf2_msgs/TFMessage"/>
+  <arg name="op"		default="pub"/>
+  <arg name="participant"	default="dhaiba_ros_bridge"/>
+  <arg name="element"		default="tf"/>
+  <arg name="name"		default="/tf"/>
+  <arg name="type"		default="tf2_msgs/TFMessage"/>
 
-  <node name="$(arg name)" pkg="dhaiba_ros" type="dhaiba_ros_bridge.py"
-  	args="$(arg op) $(arg msg) $(arg name) $(arg dw_msg).Note"
+  <node name="$(anon dhaiba_ros_bridge)"
+	pkg="dhaiba_ros" type="dhaiba_ros_bridge.py"
+  	args="$(arg op) $(arg name) $(arg participant) $(arg element).Note"
 	if="$(eval op == 'pub')"/>
 
-  <node name="$(arg name)" pkg="dhaiba_ros" type="dhaiba_ros_bridge.py"
-  	args="$(arg op) $(arg name) $(arg dw_msg).Note $(arg msg) $(arg type)"
+  <node name="$(anon dhaiba_ros_bridge)"
+	pkg="dhaiba_ros" type="dhaiba_ros_bridge.py"
+  	args="$(arg op) $(anon dhaiba_ros_bridge)
+	      $(arg participant)/$(arg element).Note $(arg name) $(arg type)"
 	if="$(eval op == 'sub')"/>
 
-  <node name="$(arg name)" pkg="dhaiba_ros" type="dhaiba_ros_bridge.py"
-  	args="$(arg op) $(arg name)
-	      Request.Note Response.Note $(arg msg) $(arg type)"
+  <node name="$(anon dhaiba_ros_bridge)"
+	pkg="dhaiba_ros" type="dhaiba_ros_bridge.py"
+  	args="$(arg op) $(arg participant)
+	      Request.Note Response.Note $(arg name) $(arg type)"
 	if="$(eval op == 'srv')"/>
+
+  <node name="$(anon dhaiba_ros_bridge)"
+	pkg="dhaiba_ros" type="dhaiba_ros_bridge.py"
+  	args="$(arg op) $(arg participant)
+	      Goal.Note Feedback.Note Result.Note $(arg name) $(arg type)"
+	if="$(eval op == 'act')"/>
 
 </launch>

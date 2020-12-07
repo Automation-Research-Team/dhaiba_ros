@@ -2,7 +2,9 @@ dhaiba_ros: connecting ROS and DhaibaWorks
 ===
 ## Introduction
 
-This package provides a set of software for making communications between ROS and [DhaibaWorks](https://www.dhaibaworks.com/).
+This package provides a set of software for making communications between ROS and [DhaibaWorks](https://www.dhaibaworks.com/). The following two bridging nodes are available;
+- **urdf_publisher**: Publish a robot description loaded from the specified ROS parameter as well as its dynamical state obtained from TF to DhaibaWorks.
+- **dhaiba_ros_bridge**: Transfer any type of messages between ROS and DhaibaWorks as ROS topics, services or actions.
 
 ## Installation
 Firstly, `DhaibaConnect` plugin available from [portal site of DhaibaWorks](https://dhaibaweb.azurewebsites.net/start.php?id=EFB14EBA21CB85B13CAAA817E7CDA7C3257BB412E1CE6589BDF735780B1DFCCA7B91B2B2DD6151CA0C4001F11540899BA2ABA8476D77540139F4D402DBCF5E4D528096C7740D8CBA) should be installed to your `DhaibaWorks` environment on macOS or Windows.
@@ -40,26 +42,43 @@ The `dhaiba_ros_bridge` provides functions for interchanging any type of message
 Any ROS topic of arbitrary type can be transferred to DhaibaWorks;
 
 ```bash
-$ roslaunch dhaiba_ros run.launch [name:=<ROS node name>] op:=pub msg:=<ROS topic name> dw_msg:=<DhaibaWorks topic name> 
+$ roslaunch dhaiba_ros run.launch  op:=pub participant:=<participant name> element:=<element name>  name:=<topic name>
 ```
 where
-- **name**: specifies ROS node name. This parameter also gives participant's name appeared in DhaibaWorks (default: `dhaiba_ros_bridge`)
-- **msg**: specifies ROS topic name to be transferred to DhaibaWorks, e.g. `/tf`.
-- **dw_msg**: specifies DhaibaWorks element name for the transferred ROS topic, e.g. `tf`. The incoming topic appears as `<name>/<dw_msg>` on the DhaibaWorks side. 
+- **participant**: specifies DhaibaWorks participant name of this node as a DhaibaConnect publisher (default: `dhaiba_ros_bridge`)
+- **element**: specifies DhaibaWorks element name of the transferred ROS topic, e.g. `tf`. The incoming topic appears as `<participant>/<element>` on the DhaibaWorks side.
+- **name**: specifies ROS topic name to be transferred to DhaibaWorks, e.g. `/tf`.
 
 ### Subscribe DhaibaWorks topic and then publish it to ROS
 Any DhaibaWoks topic can be transferred to ROS if its message type is known to ROS;
 ```bash
-$ roslaunch dhaiba_ros run.launch [name:=<ROS node name>] op:=sub msg:=<ROS topic name> dw_msg:=<DhaibaWorks topic name> type:=<ROS message type>
+$ roslaunch dhaiba_ros run.launch op:=sub name:=<topic name> participant:=<participant name> element:=<element name> type:=<message type>
 ```
 where
-- **name**: specifies ROS node name. (default: `dhaiba_ros_bridge`)
-- **msg**: specifies ROS topic name, e.g. `/my_tf`.
-- **dw_msg**: specifies DhaibaWorks topic name to be transferred to ROS.Note that the name must include the participant name of the DhaibaConnect publisher, e.g. `dhaiba_ros_publisher/tf`.
+- **participant**: specifies DhaibaWorks participant name of the **DhaibaWorks** with which this node communicates.
+- **element**: specifies DhaibaWorks element name to be transferred to ROS.The subscribed topic appears as `<participant>/<element>`.
+- **name**: specifies ROS topic name, e.g. `/my_tf`.
 - **type**: specifies ROS message type to be transferred from DhaibaWorks, e.g. `tf2_msgs/TFMessage`.
 
-### Transfer commands from DhaibaWorks to ROS nodes as ROS service requests and then return the responses from the nodes back to DW
+### Send commands from DhaibaWorks to a ROS node as ROS service requests and return the received responses back to DW
 
+```bash
+$ roslaunch dhaiba_ros run.launch op:=srv participant:=<participant name> name:=<service name> type:=<service type>
+```
+where
+- **participant**: specifies DhaibaWorks participant name of the **DhaibaWorks** with which this node communicates.
+- **name**: specifies ROS service name, e.g. `/tutle1/teleport_absolute`.
+- **type**: specifies ROS service type to be transferred from DhaibaWorks, e.g. `turtlesim/TeleportAbsolute`.
+
+### Send commands from DhaibaWorks to a ROS node as ROS action goals and returns received feedbacks and results back to DW
+
+```bash
+$ roslaunch dhaiba_ros run.launch op:=act participant:=<participant name> name:=<action name> type:=<action type>
+```
+where
+- **participant**: specifies DhaibaWorks participant name of the **DhaibaWorks** with which this node communicates.
+- **name**: specifies ROS action name, e.g. `/fibonacci`.
+- **type**: specifies ROS action type to be transferred from DhaibaWorks, e.g. `actionlib_tutorials/FibonacciAction`.
 
 ## Testing
 Three commands are available for testing `dahiba_ros_bridge`.
@@ -77,30 +96,22 @@ The following command launches two ROS nodes `dhaiba_ros_publisher` and `dhaiba_
 $ roslaunch dhaiba_ros test_topic.launch
 ``` 
 
-### Interpretation as ROS services
+### Communicating as ROS services
 response の中身はない（空）だが、視覚的に turtle が動く。
-
 ```bash
-$ roslaunch turtle_tf2 turtle_tf2_demo.launch
-$ python scripts/dhaiba_ros_bridge.py srv DhaibaConectNoteService Request.Note Response.Note /turtle1/teleport_absolute turtlesim/TeleportAbsolute
-$ python scripts/sub.py DhaibaConectNoteService Response.Note
-$ python scripts/pub.py DhaibaConectNoteService Request.Note t
+$ roslaunch dhaiba_ros test_srv.launch
+$ rosrun dhaiba_ros pub.py dhaiba_ros_bridge Request.Note t
 ```
 
 response の中身はあるが、視覚的に turtle が動く等はない。
-
 ```bash
-$ roslaunch turtle_tf2 turtle_tf2_demo.launch
-$ python scripts/dhaiba_ros_bridge.py srv DhaibaConectNoteService Request.Note Response.Note /turtle_pointer/tf2_frames tf2_msgs/FrameGraph
-$ python scripts/sub.py DhaibaConectNoteService Response.Note
-$ python scripts/pub.py DhaibaConectNoteService Request.Note f
+$ roslaunch dhaiba_ros test_srv.launch teleport:=false
+$ rosrun dhaiba_ros pub.py dhaiba_ros_bridge Request.Note f
 ```
 
+### Communicating as ROS actions
 ```bash
-$ rosrun actionlib_tutorials fibonacci_server.py
-$ python scripts/dhaiba_ros_bridge.py act DhaibaConectNoteAct Goal.Note Feedback.Note Result.Note /fibonacci actionlib_tutorials/FibonacciAction
-$ python scripts/sub.py DhaibaConectNoteAct Result.Note
-$ python scripts/sub.py DhaibaConectNoteAct Feedback.Note
-$ python scripts/pub.py DhaibaConectNoteAct Goal.Note a
+$ roslaunch dhaiba_ros test_act.launch
+$ rosrun dhaiba_ros pub.py dhaiba_ros_bridge Goal.Note a
 ```
 

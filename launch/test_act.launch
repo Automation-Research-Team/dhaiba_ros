@@ -1,0 +1,24 @@
+<?xml version="1.0" ?>
+<launch>
+
+  <arg name="participant"	default="dhaiba_ros_bridge"/>
+  <arg name="teleport"		default="true"/>
+
+  <arg name="name"	value="/fibonacci"/>
+  <arg name="type"	value="actionlib_tutorials/FibonacciAction"/>
+
+  <node name="fibonacci" pkg="actionlib_tutorials" type="fibonacci_server"/>
+
+  <include file="$(find dhaiba_ros)/launch/run.launch">
+    <arg name="op"		value="act"/>
+    <arg name="participant"	value="$(arg participant)"/>
+    <arg name="name"		value="$(arg name)"/>
+    <arg name="type"		value="$(arg type)"/>
+  </include>
+
+  <node name="result" pkg="dhaiba_ros" type="sub.py"
+  	args="$(arg participant) Result.Note"/>
+  <node name="feedback" pkg="dhaiba_ros" type="sub.py"
+  	args="$(arg participant) Feedback.Note"/>
+
+</launch>
