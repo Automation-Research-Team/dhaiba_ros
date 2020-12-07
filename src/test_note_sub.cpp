@@ -12,10 +12,10 @@ main()
     manager->initialize("DhaibaConectNoteSub");
 
     const auto	subDef = manager->createSubscriber(
-				"DhaibaConectNotePub/SampleNote.Note::Definition",
+				"PARTICIPANT216407/pickingStateNote.Note::Definition",
 				"dhc::String", false, true);
     const auto	subCur = manager->createSubscriber(
-				"DhaibaConectNotePub/SampleNote.Note::CurrentText",
+				"PARTICIPANT216407/pickingStateNote.Note::CurrentText",
 				"dhc::String", false, false);
 
     Connections::connect(&subDef->newDataMessage,

@@ -21,13 +21,15 @@
   <node name="$(anon dhaiba_ros_bridge)"
 	pkg="dhaiba_ros" type="dhaiba_ros_bridge.py"
   	args="$(arg op) $(arg participant)
-	      Request.Note Response.Note $(arg name) $(arg type)"
+	      $(arg element)Request.Note $(arg element)Response.Note
+	      $(arg name) $(arg type)"
 	if="$(eval op == 'srv')"/>
 
   <node name="$(anon dhaiba_ros_bridge)"
 	pkg="dhaiba_ros" type="dhaiba_ros_bridge.py"
   	args="$(arg op) $(arg participant)
-	      Goal.Note Feedback.Note Result.Note $(arg name) $(arg type)"
+	      $(arg element)Goal.Note $(arg element)Feedback.Note
+	      $(arg element)Result.Note $(arg name) $(arg type)"
 	if="$(eval op == 'act')"/>
 
 </launch>

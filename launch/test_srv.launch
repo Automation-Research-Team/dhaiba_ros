@@ -18,6 +18,7 @@
   <include file="$(find dhaiba_ros)/launch/run.launch">
     <arg name="op"		value="srv"/>
     <arg name="participant"	value="$(arg participant)"/>
+    <arg name="element"		value=""/>
     <arg name="name"		value="$(arg name)"/>
     <arg name="type"		value="$(arg type)"/>
   </include>

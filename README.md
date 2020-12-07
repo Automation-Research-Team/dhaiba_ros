@@ -63,20 +63,22 @@ where
 ### Send commands from DhaibaWorks to a ROS node as ROS service requests and return the received responses back to DW
 
 ```bash
-$ roslaunch dhaiba_ros run.launch op:=srv participant:=<participant name> name:=<service name> type:=<service type>
+$ roslaunch dhaiba_ros run.launch op:=srv participant:=<participant name> element:=<element prefix> name:=<service name> type:=<service type>
 ```
 where
 - **participant**: specifies participant name of the **DhaibaWorks host** with which this node communicates.
+- **element**: specifies prefix of DhaibaWorks elements transferred between ROS and DhaibaWorks. The request and response topics appear as `<participant>/<element>Request` and `<participant>/<element>Response` on the DhaibaWorks side, respectively.
 - **name**: specifies ROS service name, e.g. `/tutle1/teleport_absolute`.
 - **type**: specifies ROS service type to be transferred from DhaibaWorks, e.g. `turtlesim/TeleportAbsolute`.
 
 ### Send commands from DhaibaWorks to a ROS node as ROS action goals and returns received feedbacks and results back to DW
 
 ```bash
-$ roslaunch dhaiba_ros run.launch op:=act participant:=<participant name> name:=<action name> type:=<action type>
+$ roslaunch dhaiba_ros run.launch op:=act participant:=<participant name> element:=<element prefix> name:=<action name> type:=<action type>
 ```
 where
 - **participant**: specifies participant name of the **DhaibaWorks host** with which this node communicates.
+- **element**: specifies prefix of DhaibaWorks elements transferred between ROS and DhaibaWorks. The goal, feedback and result topics appear as `<participant>/<element>Goal`, `<participant>/<element>Feedback` and `<participant>/<element>Result` on the DhaibaWorks side, respectively.
 - **name**: specifies ROS action name, e.g. `/fibonacci`.
 - **type**: specifies ROS action type to be transferred from DhaibaWorks, e.g. `actionlib_tutorials/FibonacciAction`.
 
