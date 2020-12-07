@@ -38,24 +38,24 @@ where
 ## dhaiba_ros_bridge
 The `dhaiba_ros_bridge` provides functions for interchanging any type of messages between `ROS` and `DhabaWorks`. Messages are encoded with `YAML` format and transferred as `Note` of `DhaibaConnect` . The following three functions are supported.
 
-### Subscribe ROS topic and then publish it to DhaibaWorks
+### Subscribe ROS topic and then publish it toward DhaibaWorks
 Any ROS topic of arbitrary type can be transferred to DhaibaWorks;
 
 ```bash
 $ roslaunch dhaiba_ros run.launch  op:=pub participant:=<participant name> element:=<element name>  name:=<topic name>
 ```
 where
-- **participant**: specifies DhaibaWorks participant name of this node as a DhaibaConnect publisher (default: `dhaiba_ros_bridge`)
+- **participant**: specifies participant name of this node as a DhaibaConnect publisher (default: `dhaiba_ros_bridge`)
 - **element**: specifies DhaibaWorks element name of the transferred ROS topic, e.g. `tf`. The incoming topic appears as `<participant>/<element>` on the DhaibaWorks side.
 - **name**: specifies ROS topic name to be transferred to DhaibaWorks, e.g. `/tf`.
 
-### Subscribe DhaibaWorks topic and then publish it to ROS
+### Subscribe DhaibaWorks topic and then publish it toward ROS
 Any DhaibaWoks topic can be transferred to ROS if its message type is known to ROS;
 ```bash
 $ roslaunch dhaiba_ros run.launch op:=sub name:=<topic name> participant:=<participant name> element:=<element name> type:=<message type>
 ```
 where
-- **participant**: specifies DhaibaWorks participant name of the **DhaibaWorks** with which this node communicates.
+- **participant**: specifies participant name of the **DhaibaWorks host** with which this node communicates.
 - **element**: specifies DhaibaWorks element name to be transferred to ROS.The subscribed topic appears as `<participant>/<element>`.
 - **name**: specifies ROS topic name, e.g. `/my_tf`.
 - **type**: specifies ROS message type to be transferred from DhaibaWorks, e.g. `tf2_msgs/TFMessage`.
@@ -66,7 +66,7 @@ where
 $ roslaunch dhaiba_ros run.launch op:=srv participant:=<participant name> name:=<service name> type:=<service type>
 ```
 where
-- **participant**: specifies DhaibaWorks participant name of the **DhaibaWorks** with which this node communicates.
+- **participant**: specifies participant name of the **DhaibaWorks host** with which this node communicates.
 - **name**: specifies ROS service name, e.g. `/tutle1/teleport_absolute`.
 - **type**: specifies ROS service type to be transferred from DhaibaWorks, e.g. `turtlesim/TeleportAbsolute`.
 
@@ -76,7 +76,7 @@ where
 $ roslaunch dhaiba_ros run.launch op:=act participant:=<participant name> name:=<action name> type:=<action type>
 ```
 where
-- **participant**: specifies DhaibaWorks participant name of the **DhaibaWorks** with which this node communicates.
+- **participant**: specifies participant name of the **DhaibaWorks host** with which this node communicates.
 - **name**: specifies ROS action name, e.g. `/fibonacci`.
 - **type**: specifies ROS action type to be transferred from DhaibaWorks, e.g. `actionlib_tutorials/FibonacciAction`.
 
@@ -96,7 +96,7 @@ The following command launches two ROS nodes `dhaiba_ros_publisher` and `dhaiba_
 $ roslaunch dhaiba_ros test_topic.launch
 ``` 
 
-### Communicating as ROS services
+### Communicating over ROS services
 response の中身はない（空）だが、視覚的に turtle が動く。
 ```bash
 $ roslaunch dhaiba_ros test_srv.launch
@@ -109,7 +109,7 @@ $ roslaunch dhaiba_ros test_srv.launch teleport:=false
 $ rosrun dhaiba_ros pub.py dhaiba_ros_bridge Request.Note f
 ```
 
-### Communicating as ROS actions
+### Communicating over ROS actions
 ```bash
 $ roslaunch dhaiba_ros test_act.launch
 $ rosrun dhaiba_ros pub.py dhaiba_ros_bridge Goal.Note a
