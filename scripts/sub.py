@@ -6,8 +6,8 @@ import dhaiba_ros
 def callback(data):
     print('callback:', data)
 
-participant = "DhaibaConectNoteSub"
-topic = "DhaibaConectNotePub/SampleNote.Note"
+participant = "DhaibaConectNotePub"
+topic = "SampleNote.Note"
 
 if len(sys.argv) >= 3:
     participant = sys.argv[1]

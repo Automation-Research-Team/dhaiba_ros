@@ -14,9 +14,11 @@ import genpy
 import roslib.message
 import rosgraph
 import rospy
+import actionlib
 
 import yaml
 import roslib.message
+import threading
 
 import dhaiba_ros
 
@@ -315,12 +317,82 @@ def _cmd_srv(argv):
                                 cb.callback
                                 )
 
+class CallbackAction(object):
+    def __init__(self, action, msg_type):
+        if action and action[-1] == '/':
+            action = action[:-1]
+        self.msg_class = roslib.message.get_message_class(msg_type)
+        self.act_client = actionlib.SimpleActionClient(action, self.msg_class)
+        self.act_client.wait_for_server()
+
+    def callback(self, data):
+        # sys.stdout.write(data+'\n')
+        # sys.stdout.flush()
+
+        loaded = yaml.load_all(data, Loader=yaml.CLoader)
+        print('loaded:', loaded)
+
+        if loaded is not None:
+            for doc in loaded:
+                if doc is not None:
+                    goal = self.msg_class().action_goal.goal
+                    genpy.message.fill_message_args(goal, [doc])
+                    print('goal:', type(goal), goal)
+                    self.act_client.send_goal(goal)
+                    self.act_client.wait_for_result()
+                    # result send in result_thread
+
+def _cmd_act(argv):
+    from optparse import OptionParser
+
+    args = argv[2:]
+    parser = OptionParser(usage="usage: %prog act Participant GoalTopic(sub) FeedbackTopic(pub) ResultTopic(pub) Action(ROS) MsgType(ROS)", prog=argv[0])
+    if len(args) == 0:
+        parser.error("topic must be specified")
+    fastrtps_participant = args[0]
+    fastrtps_topic_goal = args[1]
+    fastrtps_topic_fb = args[2]
+    fastrtps_topic_result = args[3]
+    ros_action = args[4]
+    ros_msg_type = args[5]
+
+    rospy.init_node(NAME, anonymous=True)
+
+    feedback_thread = threading.Thread(
+        target=_cmd_pub,
+        args=([ argv[0], argv[1],
+            ros_action+'/feedback', fastrtps_participant, fastrtps_topic_fb ]
+            , )
+        )
+    result_thread = threading.Thread(
+        target=_cmd_pub,
+        args=([ argv[0], argv[1],
+            ros_action+'/result', fastrtps_participant, fastrtps_topic_result ]
+            , )
+        )
+
+    feedback_thread.start()
+    result_thread.start()
+
+    cb = CallbackAction(ros_action, ros_msg_type)
+
+    dhaiba_sub_goal = dhaiba_ros.note_subscriber(
+                fastrtps_participant,
+                fastrtps_participant + '/' + fastrtps_topic_goal,
+                cb.callback
+                )
+
+    print('--- join threads ---')
+    result_thread.join()
+    feedback_thread.join()
+
 def _usage(cmd):
     print("""usage:
 \t%s pub Participant Topic\t\tpublish to DhaibaConnect from Topic(ROS)
 \t%s sub Participant Topic Topic(ROS) MsgType(ROS)\t\tsubscribe from DhaibaConnect, publish to Topic(ROS)
 \t%s srv Participant Topic(sub) Topic(pub) Service(ROS) SrvType(ROS)\t\tsubscribe from DhaibaConnect, call to Serivce(ROS), publish response to DhaibaConnect
-""" % (cmd, cmd))
+\t%s act Participant GoalTopic(sub) FeedbackTopic(pub) ResultTopic(pub) Action(ROS) MsgType(ROS)\t\tsubscribe from DhaibaConnect, call to Action(ROS), publish feedback & result to DhaibaConnect
+""" % (cmd, cmd, cmd, cmd))
     sys.exit(getattr(os, 'EX_USAGE', 1))
 
 def main(argv=None):
@@ -338,6 +410,8 @@ def main(argv=None):
             _cmd_sub(argv)
         elif command == 'srv':
             _cmd_srv(argv)
+        elif command == 'act':
+            _cmd_act(argv)
         else:
             _usage(argv[0])
     except KeyboardInterrupt: pass

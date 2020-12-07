@@ -19,6 +19,10 @@ theta: 0
 
 data_FrameGraph=""
 
+data_FibonacciGoal="""
+order: 10
+"""
+
 data = ''
 
 if len(sys.argv) >= 4:
@@ -26,6 +30,8 @@ if len(sys.argv) >= 4:
         data = data_TeleportAbsolute
     elif sys.argv[3] == 'f':
         data = data_FrameGraph
+    elif sys.argv[3] == 'a':
+        data = data_FibonacciGoal
 
 print ">>>>> note_pub <<<<< %s %s" % (participant, topic)
 obj = dhaiba_ros.note_publisher(participant, topic)

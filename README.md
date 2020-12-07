@@ -81,16 +81,26 @@ $ roslaunch dhaiba_ros test_topic.launch
 response の中身はない（空）だが、視覚的に turtle が動く。
 
 ```bash
-$ python scripts/dhaiba_connect_topic.py srv DhaibaConectNoteService Request.Note Response.Note /turtle1/teleport_absolute turtlesim/TeleportAbsolute
-$ python test/sub.py DhaibaConectNoteService Response.Note
-$ python test/pub.py DhaibaConectNoteService Request.Note t
+$ roslaunch turtle_tf2 turtle_tf2_demo.launch
+$ python scripts/dhaiba_ros_bridge.py srv DhaibaConectNoteService Request.Note Response.Note /turtle1/teleport_absolute turtlesim/TeleportAbsolute
+$ python scripts/sub.py DhaibaConectNoteService Response.Note
+$ python scripts/pub.py DhaibaConectNoteService Request.Note t
 ```
 
 response の中身はあるが、視覚的に turtle が動く等はない。
 
 ```bash
-$ python scripts/dhaiba_connect_topic.py srv DhaibaConectNoteService Request.Note Response.Note /turtle_pointer/tf2_frames tf2_msgs/FrameGraph
-$ python test/sub.py DhaibaConectNoteService Response.Note
-$ python test/pub.py DhaibaConectNoteService Request.Note f
+$ roslaunch turtle_tf2 turtle_tf2_demo.launch
+$ python scripts/dhaiba_ros_bridge.py srv DhaibaConectNoteService Request.Note Response.Note /turtle_pointer/tf2_frames tf2_msgs/FrameGraph
+$ python scripts/sub.py DhaibaConectNoteService Response.Note
+$ python scripts/pub.py DhaibaConectNoteService Request.Note f
+```
+
+```bash
+$ rosrun actionlib_tutorials fibonacci_server.py
+$ python scripts/dhaiba_ros_bridge.py act DhaibaConectNoteAct Goal.Note Feedback.Note Result.Note /fibonacci actionlib_tutorials/FibonacciAction
+$ python scripts/sub.py DhaibaConectNoteAct Result.Note
+$ python scripts/sub.py DhaibaConectNoteAct Feedback.Note
+$ python scripts/pub.py DhaibaConectNoteAct Goal.Note a
 ```
 
