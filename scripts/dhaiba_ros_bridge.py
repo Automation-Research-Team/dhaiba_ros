@@ -318,14 +318,16 @@ def _cmd_srv(argv):
                                 )
 
 class CallbackAction(object):
-    def __init__(self, action, msg_type, remember_recent_goal):
+    def __init__(self, action, msg_type, remember_last_goal, timeout):
         if action and action[-1] == '/':
             action = action[:-1]
         self.msg_class = roslib.message.get_message_class(msg_type)
         self.act_client = actionlib.SimpleActionClient(action, self.msg_class)
         self.act_client.wait_for_server()
-        self.remember_recent_goal = remember_recent_goal
-        self.recent_goal = None
+        self.remember_last_goal = remember_last_goal
+        self.timeout = rospy.Duration(timeout) if timeout > 0 else None
+        self.last_goal = None
+        self.last_time = None
 
     def callback(self, data):
         # sys.stdout.write(data+'\n')
@@ -340,11 +342,13 @@ class CallbackAction(object):
                     goal = self.msg_class().action_goal.goal
                     genpy.message.fill_message_args(goal, [doc])
                     print('goal:', type(goal), goal)
-                    if self.remember_recent_goal:
-                        if self.recent_goal == goal:
-                            print('# skip #', self.recent_goal, goal)
-                            return
-                        self.recent_goal = goal
+                    if self.remember_last_goal:
+                        if self.last_goal == goal:
+                            if self.timeout is None or rospy.Time.now() - self.last_time < self.timeout:
+                                print('# skip #', self.last_goal, goal)
+                                return
+                        self.last_goal = goal
+                        self.last_time = rospy.Time.now()
                     self.act_client.send_goal(goal)
                     self.act_client.wait_for_result()
                     # result send in result_thread
@@ -353,7 +357,7 @@ def _cmd_act(argv):
     from optparse import OptionParser
 
     args = argv[2:]
-    parser = OptionParser(usage="usage: %prog act Participant GoalTopic(sub) FeedbackTopic(pub) ResultTopic(pub) Action(ROS) MsgType(ROS) RememberRecentGoal(default is False)", prog=argv[0])
+    parser = OptionParser(usage="usage: %prog act Participant GoalTopic(sub) FeedbackTopic(pub) ResultTopic(pub) Action(ROS) MsgType(ROS) RememberLastGoal(default False) Timeout(default no-timeout)", prog=argv[0])
     if len(args) == 0:
         parser.error("topic must be specified")
     fastrtps_participant = args[0]
@@ -362,9 +366,12 @@ def _cmd_act(argv):
     fastrtps_topic_result = args[3]
     ros_action = args[4]
     ros_msg_type = args[5]
-    remember_recent_goal = False
+    remember_last_goal = False
     if len(args) > 6:
-        remember_recent_goal = args[6]
+        remember_last_goal = args[6]
+    timeout = 0
+    if len(args) > 7:
+        timeout = int(args[7])
 
     rospy.init_node(NAME, anonymous=True)
 
@@ -384,7 +391,7 @@ def _cmd_act(argv):
     feedback_thread.start()
     result_thread.start()
 
-    cb = CallbackAction(ros_action, ros_msg_type, remember_recent_goal)
+    cb = CallbackAction(ros_action, ros_msg_type, remember_last_goal, timeout)
 
     dhaiba_sub_goal = dhaiba_ros.note_subscriber(
                 fastrtps_participant,
@@ -401,7 +408,7 @@ def _usage(cmd):
 \t%s pub Participant Topic\t\tpublish to DhaibaConnect from Topic(ROS)
 \t%s sub Participant Topic Topic(ROS) MsgType(ROS)\t\tsubscribe from DhaibaConnect, publish to Topic(ROS)
 \t%s srv Participant Topic(sub) Topic(pub) Service(ROS) SrvType(ROS)\t\tsubscribe from DhaibaConnect, call to Serivce(ROS), publish response to DhaibaConnect
-\t%s act Participant GoalTopic(sub) FeedbackTopic(pub) ResultTopic(pub) Action(ROS) MsgType(ROS) RememberRecentGoal(default is False)\t\tsubscribe from DhaibaConnect, call to Action(ROS), publish feedback & result to DhaibaConnect
+\t%s act Participant GoalTopic(sub) FeedbackTopic(pub) ResultTopic(pub) Action(ROS) MsgType(ROS) RememberLastGoal(default False) Timeout(default no-timeout)\t\tsubscribe from DhaibaConnect, call to Action(ROS), publish feedback & result to DhaibaConnect
 """ % (cmd, cmd, cmd, cmd))
     sys.exit(getattr(os, 'EX_USAGE', 1))
 
