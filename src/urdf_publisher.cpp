@@ -248,6 +248,7 @@ class URDFPublisher
       public:
 		Element(DhaibaConnect::Manager* manager,
 			const link_cp& link)				;
+		~Element()						;
 
 	void	publish_definition()				 const	;
 	void	publish_geometry_state(const tf::Transform& Twj) const	;
@@ -255,12 +256,14 @@ class URDFPublisher
       private:
 	const urdf::VisualConstSharedPtr	_visual;
 	tf::Transform				_Tjo;
+	DhaibaConnect::Manager* const		_manager;
 	DhaibaConnect::PublisherInfo* const	_definition_pub;
 	DhaibaConnect::PublisherInfo* const	_geometry_state_pub;
     };
 
   public:
-		URDFPublisher(const std::string& name)				;
+		URDFPublisher(const std::string& name)			;
+		~URDFPublisher()					;
 
     void	run()						const	;
 
@@ -382,6 +385,15 @@ URDFPublisher::URDFPublisher(const std::string& name)
     ROS_INFO_STREAM("(urdf_publisher) Node[" << name << "] initialized.");
 }
 
+URDFPublisher::~URDFPublisher()
+{
+    if (_publish_armature)
+    {
+	_manager->removePublisher(_link_state_pub);
+	_manager->removePublisher(_definition_pub);
+    }
+}
+
 void
 URDFPublisher::run() const
 {
@@ -496,8 +508,9 @@ URDFPublisher::Element::Element(DhaibaConnect::Manager* manager,
 				const link_cp& link)
     :_visual(link->visual),
      _Tjo(),
-     _definition_pub(create_publisher(manager, link)),
-     _geometry_state_pub(create_publisher(manager,
+     _manager(manager),
+     _definition_pub(create_publisher(_manager, link)),
+     _geometry_state_pub(create_publisher(_manager,
 					  link->name +
 					  ".PointSupplier::GeometryState",
 					  "dhc::GeometryState", false))
@@ -523,6 +536,12 @@ URDFPublisher::Element::Element(DhaibaConnect::Manager* manager,
 			  {
 			      publish_definition();
 			  }});
+}
+
+URDFPublisher::Element::~Element()
+{
+    _manager->removePublisher(_geometry_state_pub);
+    _manager->removePublisher(_definition_pub);
 }
 
 void
