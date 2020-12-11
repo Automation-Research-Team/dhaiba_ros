@@ -11,8 +11,8 @@ namespace dhaiba_ros
 class note_publisher
 {
 public:
-    note_publisher() { }
-    ~note_publisher() { }
+    note_publisher();
+    ~note_publisher();
 
     note_publisher(
                 const std::string& participantName,
@@ -32,8 +32,8 @@ private:
 class note_subscriber
 {
 public:
-    note_subscriber() { }
-    ~note_subscriber() { }
+    note_subscriber();
+    ~note_subscriber();
 
     note_subscriber(
                 const std::string& participantName,

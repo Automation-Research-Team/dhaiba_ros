@@ -5,10 +5,17 @@
 namespace dhaiba_ros
 {
 
+note_publisher::note_publisher()
+                : pubDef(nullptr), pubCur(nullptr)
+{
+    ;
+}
+
 note_publisher::note_publisher(
                 const std::string& participantName,
                 const std::string& topicNameStartsWith
                 )
+                : pubDef(nullptr), pubCur(nullptr)
 {
     std::cout << "\n#note_publisher# "
                 << participantName << " " << topicNameStartsWith << std::endl;
@@ -37,6 +44,16 @@ note_publisher::note_publisher(
             }});
 }
 
+note_publisher::~note_publisher()
+{
+    // std::cout << "\n#note_publisher::~note_publisher#" << std::endl;
+    const auto manager = Manager::instance();
+    if (pubCur)
+        manager->removePublisher(pubCur);
+    if (pubDef)
+        manager->removePublisher(pubDef);
+}
+
 void note_publisher::write(const std::string& data)
 {
     std::cout << "\n# data #\n" << data << std::endl;
@@ -45,11 +62,18 @@ void note_publisher::write(const std::string& data)
     pubCur->write(&note);
 }
 
+note_subscriber::note_subscriber()
+                : subDef(nullptr), subCur(nullptr)
+{
+    ;
+}
+
 note_subscriber::note_subscriber(
                 const std::string& participantName,
                 const std::string& topicNameStartsWith,
                 const std::function<void(const std::string&)>& callback
                 )
+                : subDef(nullptr), subCur(nullptr)
 {
     std::cout << "\n#note_subscriber# "
                 << participantName << " " << topicNameStartsWith << std::endl;
@@ -62,15 +86,15 @@ note_subscriber::note_subscriber(
         std::cout << "\n#note_subscriber# manager initialize" << std::endl;
     }
 
-    const auto subDef = manager->createSubscriber(
+    subDef = manager->createSubscriber(
                                 topicNameStartsWith + "::Definition",
                                 "dhc::String", false, true);
-    const auto subCur = manager->createSubscriber(
+    subCur = manager->createSubscriber(
                                 topicNameStartsWith + "::CurrentText",
                                 "dhc::String", false, false);
 
     Connections::connect(&subDef->newDataMessage,
-        {[&, subDef](SubscriberInfo* sub)
+        {[&](SubscriberInfo* sub)
             {
                 std::cout << "Definition data received." << std::endl;
                 dhc::String note;
@@ -80,7 +104,6 @@ note_subscriber::note_subscriber(
                 if(sampleInfo.dataChangeType != DhaibaConnect::ALIVE)
                     return;
                 std::cout << "  Note message: " << note.value() << std::endl;
-                // manager->removeSubscriber(subDef);
             }});
 
     Connections::connect(&subCur->newDataMessage,
@@ -99,6 +122,16 @@ note_subscriber::note_subscriber(
     std::cout << "Press any key and return to quit: " << std::endl;
     std::string s;
     std::cin >> s;
+}
+
+note_subscriber::~note_subscriber()
+{
+    // std::cout << "\n#note_subscriber::~note_subscriber#" << std::endl;
+    const auto manager = Manager::instance();
+    if (subCur)
+        manager->removeSubscriber(subCur);
+    if (subDef)
+        manager->removeSubscriber(subDef);
 }
 
 } /* namespace dhaiba_ros */

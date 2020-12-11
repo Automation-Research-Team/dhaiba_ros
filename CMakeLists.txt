@@ -39,8 +39,6 @@ set(PYTHON_EXECUTABLE /usr/bin/python)
 set(pybind11_DIR /usr/local/lib/python2.7/dist-packages/pybind11_cmake)
 find_package(pybind11 REQUIRED)
 
-set(DHAIBA_PYBIND "dhaiba_pybind")
-
 add_definitions(-DVERSION_INFO=\"${PROJECT_NAME}_VERSION\")
 add_definitions(-DLIBRARY_NAME=${PROJECT_NAME})
 add_definitions(-D__MY_TEST__ -g -Wall)
@@ -65,7 +63,7 @@ catkin_package(
     roscpp
     geometry_msgs
   LIBRARIES
-    ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}/../${PROJECT_NAME}/${PROJECT_NAME}.so
+    ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}/${PROJECT_NAME}.so
 )
 
 add_executable(urdf_publisher
@@ -134,7 +132,7 @@ set_target_properties(${PROJECT_NAME}
     PREFIX "${PYTHON_MODULE_PREFIX}"
     SUFFIX "${PYTHON_MODULE_EXTENSION}"
     CXX_VISIBILITY_PRESET "hidden"
-    LIBRARY_OUTPUT_DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}/../${PROJECT_NAME}
+    LIBRARY_OUTPUT_DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}/
 )
 
 #############
