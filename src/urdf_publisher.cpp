@@ -114,10 +114,10 @@ mat44(const tf::Transform& trns, bool scale=false)
 }
 
 static DhaibaConnect::PublisherInfo*
-create_publisher(DhaibaConnect::Manager* manager,
-		 const std::string& topicName,
+create_publisher(const std::string& topicName,
 		 const std::string& typeName, bool highReliability)
 {
+    const auto	manager = DhaibaConnect::Manager::instance();
     const auto	pub = manager->createPublisher(topicName, typeName,
 					       false, highReliability);
     if (!pub)
@@ -132,8 +132,7 @@ create_publisher(DhaibaConnect::Manager* manager,
 }
 
 static DhaibaConnect::PublisherInfo*
-create_publisher(DhaibaConnect::Manager* manager,
-		 const urdf::LinkConstSharedPtr& link)
+create_publisher(const urdf::LinkConstSharedPtr& link)
 {
     std::string	topicName, typeName;
     switch (link->visual->geometry->type)
@@ -160,7 +159,7 @@ create_publisher(DhaibaConnect::Manager* manager,
 	return nullptr;
     }
 
-    return create_publisher(manager, topicName, typeName, true);
+    return create_publisher(topicName, typeName, true);
 }
 
 static std::vector<char>
@@ -246,8 +245,7 @@ class URDFPublisher
     class Element
     {
       public:
-		Element(DhaibaConnect::Manager* manager,
-			const link_cp& link)				;
+		Element(const link_cp& link)				;
 		~Element()						;
 
 	void	publish_definition()				 const	;
@@ -256,7 +254,6 @@ class URDFPublisher
       private:
 	const urdf::VisualConstSharedPtr	_visual;
 	tf::Transform				_Tjo;
-	DhaibaConnect::Manager* const		_manager;
 	DhaibaConnect::PublisherInfo* const	_definition_pub;
 	DhaibaConnect::PublisherInfo* const	_geometry_state_pub;
     };
@@ -287,7 +284,6 @@ class URDFPublisher
     std::unordered_map<std::string, const tf::Transform> _Tj0p0;
     std::unordered_map<std::string, const Element>	 _elements;
 
-    DhaibaConnect::Manager* const			 _manager;
     DhaibaConnect::PublisherInfo*			 _definition_pub;
     DhaibaConnect::PublisherInfo*			 _link_state_pub;
 };
@@ -302,7 +298,6 @@ URDFPublisher::URDFPublisher(const std::string& name)
      _root_link(),
      _Tj0p0(),
      _elements(),
-     _manager(DhaibaConnect::Manager::instance()),
      _definition_pub(nullptr),
      _link_state_pub(nullptr)
 {
@@ -351,16 +346,15 @@ URDFPublisher::URDFPublisher(const std::string& name)
 						      std::regex("/"), "");
     ROS_DEBUG_STREAM("name[" << name << "]["
 		     << _nh.getNamespace() << "][" << participant_name << "]");
-    _manager->initialize(participant_name);
+    const auto	manager = DhaibaConnect::Manager::instance();
+    manager->initialize(participant_name);
 
   // Create publishers and register callback for armature.
     if (_publish_armature)
     {
-	_definition_pub = create_publisher(_manager,
-					   "armature.Armature::Definition",
+	_definition_pub = create_publisher("armature.Armature::Definition",
 					   "dhc::Armature", true);
-	_link_state_pub = create_publisher(_manager,
-					   "armature.Armature::LinkState",
+	_link_state_pub = create_publisher("armature.Armature::LinkState",
 					   "dhc::LinkState", false);
 	Connections::connect(&_definition_pub->matched,
 			     {[this](DhaibaConnect::PublisherInfo* pub,
@@ -389,8 +383,9 @@ URDFPublisher::~URDFPublisher()
 {
     if (_publish_armature)
     {
-	_manager->removePublisher(_link_state_pub);
-	_manager->removePublisher(_definition_pub);
+	const auto	manager = DhaibaConnect::Manager::instance();
+	manager->removePublisher(_link_state_pub);
+	manager->removePublisher(_definition_pub);
     }
 }
 
@@ -444,7 +439,7 @@ URDFPublisher::create_elements(const link_cp& link)
     if (link->visual && link->visual->geometry)
     	_elements.emplace(std::piecewise_construct,
 			  std::forward_as_tuple(link->name),
-			  std::forward_as_tuple(_manager, link));
+			  std::forward_as_tuple(link));
 
     for (const auto& child_link : link->child_links)
         create_elements(child_link);
@@ -504,14 +499,11 @@ URDFPublisher::create_link_state(const link_cp& link,
 /************************************************************************
 *  class URDFPublisher::Element						*
 ************************************************************************/
-URDFPublisher::Element::Element(DhaibaConnect::Manager* manager,
-				const link_cp& link)
+URDFPublisher::Element::Element(const link_cp& link)
     :_visual(link->visual),
      _Tjo(),
-     _manager(manager),
-     _definition_pub(create_publisher(_manager, link)),
-     _geometry_state_pub(create_publisher(_manager,
-					  link->name +
+     _definition_pub(create_publisher(link)),
+     _geometry_state_pub(create_publisher(link->name +
 					  ".PointSupplier::GeometryState",
 					  "dhc::GeometryState", false))
 {
@@ -540,8 +532,9 @@ URDFPublisher::Element::Element(DhaibaConnect::Manager* manager,
 
 URDFPublisher::Element::~Element()
 {
-    _manager->removePublisher(_geometry_state_pub);
-    _manager->removePublisher(_definition_pub);
+    const auto	manager = DhaibaConnect::Manager::instance();
+    manager->removePublisher(_geometry_state_pub);
+    manager->removePublisher(_definition_pub);
 }
 
 void
