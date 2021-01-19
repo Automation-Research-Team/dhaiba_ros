@@ -6,6 +6,8 @@
   <arg name="element"		default="tf"/>
   <arg name="name"		default="/tf"/>
   <arg name="type"		default="tf2_msgs/TFMessage"/>
+  <arg name="remember"		default="false"/>
+  <arg name="timeout"		default="0"/>
 
   <node name="$(anon dhaiba_ros_bridge)"
 	pkg="dhaiba_ros" type="dhaiba_ros_bridge.py"
@@ -29,7 +31,8 @@
 	pkg="dhaiba_ros" type="dhaiba_ros_bridge.py"
   	args="$(arg op) $(arg participant)
 	      $(arg element)Goal.Note $(arg element)Feedback.Note
-	      $(arg element)Result.Note $(arg name) $(arg type)"
+	      $(arg element)Result.Note $(arg name) $(arg type)
+	      $(arg remember) $(arg timeout)"
 	if="$(eval op == 'act')"/>
 
 </launch>
