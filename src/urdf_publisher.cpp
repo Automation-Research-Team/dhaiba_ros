@@ -141,10 +141,10 @@ create_publisher(const urdf::LinkConstSharedPtr& link)
 	topicName = link->name + ".ShapeBox::Definition";
 	typeName  = "dhc::ShapeBox";
 	break;
-      // case urdf::Geometry::SPHERE:
-      // 	topicName = link->name + ".ShapeSphere::Definition";
-      // 	typeName  = "dhc::ShapeSphere";
-      // 	break;
+      case urdf::Geometry::SPHERE:
+      	topicName = link->name + ".ShapeSphere::Definition";
+      	typeName  = "dhc::ShapeSphere";
+      	break;
       // case urdf::Geometry::CYLINDER:
       // 	topicName = link->name + ".ShapeCylinder::Definition";
       // 	typeName  = "dhc::ShapeCylinder";
