@@ -7,6 +7,7 @@ add_compile_options(-w)
 add_compile_options(-std=c++14)
 add_compile_options(-fpermissive)
 add_compile_options(-pthread)
+add_compile_options(-O2)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(URDFDOM urdfdom REQUIRED)
