@@ -152,6 +152,6 @@ install(
 
 install(
   PROGRAMS
-    scrips/dhaiba_ros_bridge.py
+    scripts/dhaiba_ros_bridge.py
     DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

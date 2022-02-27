@@ -143,10 +143,10 @@ create_publisher(const urdf::LinkConstSharedPtr& link)
 	topicName = link->name + ".ShapeBox::Definition";
 	typeName  = "dhc::ShapeBox";
 	break;
-      // case urdf::Geometry::SPHERE:
-      // 	topicName = link->name + ".ShapeSphere::Definition";
-      // 	typeName  = "dhc::ShapeSphere";
-      // 	break;
+      case urdf::Geometry::SPHERE:
+      	topicName = link->name + ".ShapeSphere::Definition";
+      	typeName  = "dhc::ShapeSphere";
+      	break;
       // case urdf::Geometry::CYLINDER:
       // 	topicName = link->name + ".ShapeCylinder::Definition";
       // 	typeName  = "dhc::ShapeCylinder";
@@ -272,7 +272,8 @@ class URDFPublisher
 				dhc::Armature& armature)	const	;
     void	create_elements(const link_cp& link)			;
     void	create_link_state(const link_cp& link,
-				  dhc::LinkState& link_state)	const	;
+				  dhc::LinkState& link_state,
+				  bool replace_odom=false)	const	;
 
   private:
     const ros::NodeHandle				 _nh;
@@ -283,6 +284,8 @@ class URDFPublisher
 
     urdf::ModelInterfaceSharedPtr			 _model;
     urdf::LinkConstSharedPtr				 _root_link;
+    const std::string					 _odom_frame;
+    const std::string					 _replaced_odom_frame;
     std::unordered_map<std::string, const tf::Transform> _Tj0p0;
     std::unordered_map<std::string, const Element>	 _elements;
 
@@ -298,6 +301,9 @@ URDFPublisher::URDFPublisher(const std::string& name)
      _publish_elements(_nh.param("publish_elements", true)),
      _model(),
      _root_link(),
+     _odom_frame( _nh.param<std::string>("odom_frame", "")),
+     _replaced_odom_frame(_nh.param<std::string>("replaced_odom_frame",
+						 _odom_frame)),
      _Tj0p0(),
      _elements(),
      _definition_pub(nullptr),
@@ -327,8 +333,7 @@ URDFPublisher::URDFPublisher(const std::string& name)
     _model->getLinks(links);
 
   // Set root link from root frame name.
-    std::string root_frame("world");
-    _nh.param("root_frame", root_frame, root_frame);
+    const auto root_frame = _nh.param<std::string>("root_frame", "world");
     const auto root_link = std::find_if(links.cbegin(), links.cend(),
                                         [&root_frame](const auto& link)
                                         { return link->name == root_frame; });
@@ -410,7 +415,7 @@ URDFPublisher::run() const
 
 void
 URDFPublisher::create_armature(const link_cp& link, const tf::Transform& Twp0,
-			dhc::Armature& armature) const
+			       dhc::Armature& armature) const
 {
     for (const auto& child_link : link->child_links)
     {
@@ -449,15 +454,31 @@ URDFPublisher::create_elements(const link_cp& link)
 
 void
 URDFPublisher::create_link_state(const link_cp& link,
-				 dhc::LinkState& link_state) const
+				 dhc::LinkState& link_state,
+				 bool replace_odom) const
 {
+    if (link->name == _odom_frame)
+	replace_odom = true;
+
     if (_publish_elements && link->visual && link->visual->geometry)
     {
 	try
 	{
 	    tf::StampedTransform	Twj;
-	    _listener.lookupTransform(_root_link->name, link->name,
-				      ros::Time(0), Twj);
+
+	    if (replace_odom)
+	    {
+		_listener.lookupTransform(_root_link->name,
+					  _replaced_odom_frame,
+					  ros::Time(0), Twj);
+		tf::StampedTransform	Toj;
+		_listener.lookupTransform(_odom_frame, link->name,
+					  ros::Time(0), Toj);
+		Twj *= Toj;
+	    }
+	    else
+		_listener.lookupTransform(_root_link->name, link->name,
+					  ros::Time(0), Twj);
 	    _elements.find(link->name)->second.publish_geometry_state(Twj);
 	}
         catch (const std::exception& err)
@@ -494,7 +515,7 @@ URDFPublisher::create_link_state(const link_cp& link,
 	    }
 	}
 
-	create_link_state(child_link, link_state);
+	create_link_state(child_link, link_state, replace_odom);
     }
 }
 
