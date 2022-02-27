@@ -1,29 +1,29 @@
 #include <iostream>
 #include <DhaibaConnectN/Common.h>
+#include <DhaibaConnectN/Manager.h>
+#include <DhaibaConnectN/SubscriberInfo.h>
 #include <DhaibaConnectN/idl/TopicDataTypeCore.h>
-
 
 int
 main()
 {
-    using namespace DhaibaConnect;
-
-    const auto	manager = Manager::instance();
+    const auto	manager = DhaibaConnect::Manager::instance();
     manager->initialize("DhaibaConectNoteSub");
 
     const auto	subDef = manager->createSubscriber(
 				"PARTICIPANT216407/pickingStateNote.Note::Definition",
-				"dhc::String", false, true);
+				"dhc::Text", false, true);
     const auto	subCur = manager->createSubscriber(
 				"PARTICIPANT216407/pickingStateNote.Note::CurrentText",
-				"dhc::String", false, false);
+				"dhc::Text", false, false);
 
     Connections::connect(&subDef->newDataMessage,
-			 {[&, subDef](SubscriberInfo* sub)
+			 {[&, subDef](DhaibaConnect::SubscriberInfo* sub)
 			  {
-			      std::cout << "Definition data received." << std::endl;
-			      dhc::String	note;
-			      SampleInfo	sampleInfo;
+			      std::cout << "Definition data received."
+					<< std::endl;
+			      dhc::Text			note;
+			      DhaibaConnect::SampleInfo	sampleInfo;
 			      if (!sub->takeNextData(&note, &sampleInfo))
 				  return;
 			      if(sampleInfo.dataChangeType
@@ -37,11 +37,12 @@ main()
 
 
     Connections::connect(&subCur->newDataMessage,
-			 {[&](SubscriberInfo* sub)
+			 {[&](DhaibaConnect::SubscriberInfo* sub)
 			  {
-			      std::cout << "CurrentText data received." << std::endl;
-			      dhc::String	note;
-			      SampleInfo	sampleInfo;
+			      std::cout << "CurrentText data received."
+					<< std::endl;
+			      dhc::Text			note;
+			      DhaibaConnect::SampleInfo	sampleInfo;
 			      if(!sub->takeNextData(&note, &sampleInfo))
 				  return;
 			      if(sampleInfo.dataChangeType

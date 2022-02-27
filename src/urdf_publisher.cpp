@@ -8,6 +8,8 @@
 #include <tf/transform_listener.h>
 #include <urdf_parser/urdf_parser.h>
 #include <DhaibaConnectN/Common.h>
+#include <DhaibaConnectN/Manager.h>
+#include <DhaibaConnectN/PublisherInfo.h>
 #include <DhaibaConnectN/idl/TopicDataTypeCore.h>
 
 #include <string>
@@ -358,7 +360,7 @@ URDFPublisher::URDFPublisher(const std::string& name)
 					   "dhc::LinkState", false);
 	Connections::connect(&_definition_pub->matched,
 			     {[this](DhaibaConnect::PublisherInfo* pub,
-				     DhaibaConnect::MatchingInfo* info)
+				     DhaibaConnect::MatchedStatus* info)
 				 {
 				     dhc::Armature	armature;
 				     create_armature(_root_link,
@@ -524,7 +526,7 @@ URDFPublisher::Element::Element(const link_cp& link)
 
     Connections::connect(&_definition_pub->matched,
 			 {[this](DhaibaConnect::PublisherInfo* pub,
-				 DhaibaConnect::MatchingInfo* into)
+				 DhaibaConnect::MatchedStatus* into)
 			  {
 			      publish_definition();
 			  }});
@@ -543,15 +545,15 @@ URDFPublisher::Element::publish_definition() const
     dhc::GeometryBaseInfo	base_info;
     if (_visual->material)
     {
-	base_info.color().r() = short(255*_visual->material->color.r);
-	base_info.color().g() = short(255*_visual->material->color.g);
-	base_info.color().b() = short(255*_visual->material->color.b);
+	base_info.rgb().r() = short(255*_visual->material->color.r);
+	base_info.rgb().g() = short(255*_visual->material->color.g);
+	base_info.rgb().b() = short(255*_visual->material->color.b);
     }
     else
     {
-	base_info.color().r() = 128;
-	base_info.color().g() = 128;
-	base_info.color().b() = 128;
+	base_info.rgb().r() = 128;
+	base_info.rgb().g() = 128;
+	base_info.rgb().b() = 128;
     }
     base_info.transform() = mat44(_Tjo, true);
 

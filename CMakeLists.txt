@@ -98,50 +98,50 @@ target_link_libraries(test_note_pub
   ${DhaibaConnectN_LIBRARY}
 )
 
-add_executable(test_note_sub
-  src/test_note_sub.cpp
-)
+#add_executable(test_note_sub
+#  src/test_note_sub.cpp
+#)
 
-add_dependencies(test_note_sub
-  ${${PREOJECT_NAME}_EXPORTED_TARGETS}
-  ${catkin_EXPORTED_TARGETS}
-)
+#add_dependencies(test_note_sub
+#  ${${PREOJECT_NAME}_EXPORTED_TARGETS}
+#  ${catkin_EXPORTED_TARGETS}
+#)
 
-target_link_libraries(test_note_sub
-  ${catkin_LIBRARIES}
-  ${roscpp_LIBRARIES}
-  ${DhaibaConnectN_LIBRARY}
-)
+#target_link_libraries(test_note_sub
+#  ${catkin_LIBRARIES}
+#  ${roscpp_LIBRARIES}
+#  ${DhaibaConnectN_LIBRARY}
+#)
 
-add_library(${PROJECT_NAME}
-  SHARED src/pybind11_modules.cpp src/dhaiba.cpp)
+#add_library(${PROJECT_NAME}
+#  SHARED src/pybind11_modules.cpp src/dhaiba.cpp)
 
-target_include_directories(${PROJECT_NAME}
-  PRIVATE ${PYBIND11_INCLUDE_DIR}
-  PRIVATE ${pybind11_INCLUDE_DIR}
-  PRIVATE ${PYTHON_INCLUDE_DIRS}
-  PRIVATE ${DhaibaConnectN_INCLUDE_DIR}
-)
+#target_include_directories(${PROJECT_NAME}
+#  PRIVATE ${PYBIND11_INCLUDE_DIR}
+#  PRIVATE ${pybind11_INCLUDE_DIR}
+#  PRIVATE ${PYTHON_INCLUDE_DIRS}
+#  PRIVATE ${DhaibaConnectN_INCLUDE_DIR}
+#)
 
-target_link_libraries(${PROJECT_NAME}
-  ${PYTHON_LIBRARIES}
-  ${DhaibaConnectN_LIBRARY}
-)
+#target_link_libraries(${PROJECT_NAME}
+#  ${PYTHON_LIBRARIES}
+#  ${DhaibaConnectN_LIBRARY}
+#)
 
-set_target_properties(${PROJECT_NAME}
-  PROPERTIES
-    PREFIX "${PYTHON_MODULE_PREFIX}"
-    SUFFIX "${PYTHON_MODULE_EXTENSION}"
-    CXX_VISIBILITY_PRESET "hidden"
-    LIBRARY_OUTPUT_DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}/
-)
+#set_target_properties(${PROJECT_NAME}
+#  PROPERTIES
+#    PREFIX "${PYTHON_MODULE_PREFIX}"
+#    SUFFIX "${PYTHON_MODULE_EXTENSION}"
+#    CXX_VISIBILITY_PRESET "hidden"
+#    LIBRARY_OUTPUT_DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}/
+#)
 
 #############
 ## Install ##
 #############
 install(
   TARGETS
-    urdf_publisher test_note_pub test_note_sub
+    urdf_publisher #test_note_pub test_note_sub
   ARCHIVE
     DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY

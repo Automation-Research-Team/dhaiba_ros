@@ -1,29 +1,30 @@
 #include <iostream>
 #include <DhaibaConnectN/Common.h>
+#include <DhaibaConnectN/Manager.h>
+#include <DhaibaConnectN/PublisherInfo.h>
 #include <DhaibaConnectN/idl/TopicDataTypeCore.h>
 
 int
 main()
 {
-    using namespace DhaibaConnect;
-
-    const auto	manager = Manager::instance();
+    const auto	manager = DhaibaConnect::Manager::instance();
     manager->initialize("DhaibaConectNotePub");
 
     const auto	pubDef = manager->createPublisher(
 					"SampleNote.Note::Definition",
-					"dhc::String", false, true);
+					"dhc::Text", false, true);
     const auto	pubCur = manager->createPublisher(
 					"SampleNote.Note::CurrentText",
-					"dhc::String", false, false);
+					"dhc::Text", false, false);
 
     Connections::connect(&pubDef->matched,
-			 {[&](PublisherInfo* pub, MatchingInfo* info)
-			  {
-			      dhc::String	note;
-			      note.value() = "";
-			      pub->write(&note);
-			  }});
+			 {[&](DhaibaConnect::PublisherInfo* pub,
+			      DhaibaConnect::MatchedStatus* info)
+			     {
+				 dhc::Text	note;
+				 note.value() = "";
+				 pub->write(&note);
+			     }});
 
     std::string data, str;
     while (std::getline(std::cin, str))
@@ -32,7 +33,7 @@ main()
         if (str == "---")
         {
             std::cout << "data[" << data << "]" << std::endl;
-            dhc::String note;
+            dhc::Text note;
             note.value() = data;
             pubCur->write(&note);
             data = "";
