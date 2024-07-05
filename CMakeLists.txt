@@ -35,9 +35,6 @@ else()
   message(STATUS "DhaibaConnectN_LIBRARY: ${DhaibaConnectN_LIBRARY}")
 endif()
 
-set(PYTHON_EXECUTABLE /usr/bin/python)
-
-set(pybind11_DIR /usr/local/lib/python2.7/dist-packages/pybind11_cmake)
 find_package(pybind11 REQUIRED)
 
 add_definitions(-DVERSION_INFO=\"${PROJECT_NAME}_VERSION\")
