@@ -474,15 +474,14 @@ URDFPublisher::create_link_state(const link_cp& link,
 
 	    if (replace_odom)
 	    {
-		const auto Two_msg = _buffer.lookupTransform(
-					_root_link->name, _replaced_odom_frame,
-					ros::Time(0)).transform;
-		const auto Toj_msg = _buffer.lookupTransform(
-					_odom_frame, link->name,
-					ros::Time(0)).transform;
 		tf2::Transform	Two, Toj;
-		tf2::fromMsg(Two_msg, Two);
-		tf2::fromMsg(Toj_msg, Toj);
+		tf2::fromMsg(_buffer.lookupTransform(_root_link->name,
+						     _replaced_odom_frame,
+						     ros::Time(0)).transform,
+			     Two);
+		tf2::fromMsg(_buffer.lookupTransform(_odom_frame, link->name,
+						     ros::Time(0)).transform,
+			     Toj);
 		Twj = Two * Toj;
 	    }
 	    else
@@ -505,11 +504,11 @@ URDFPublisher::create_link_state(const link_cp& link,
 	{
 	    try
 	    {
-		const auto Tpj_msg = _buffer.lookupTransform(
-					link->name, child_link->name,
-					ros::Time(0)).transform;
 		tf2::Transform	Tpj;
-		tf2::fromMsg(Tpj_msg, Tpj);
+		tf2::fromMsg(_buffer.lookupTransform(link->name,
+						     child_link->name,
+						     ros::Time(0)).transform,
+			     Tpj);
 		link_state.value().push_back(mat44(_Tj0p0[child_link->name]*
 						   Tpj));
 
