@@ -1,5 +1,9 @@
-#ifndef __DHAIBA_H
-#define __DHAIBA_H
+/*!
+*  \file	dhaiba_note.h
+*  \author	Toshio UESHIBA
+*  \brief	publisher/subscriber for exchanging messages between ROS and DhaibaWorks
+*/
+#pragma once
 
 #include <DhaibaConnectN/Common.h>
 #include <DhaibaConnectN/Manager.h>
@@ -9,6 +13,9 @@
 
 namespace dhaiba_ros
 {
+/************************************************************************
+*  class node_publisher							*
+************************************************************************/
 class note_publisher
 {
   public:
@@ -28,6 +35,9 @@ class note_publisher
 
 };
 
+/************************************************************************
+*  class node_subscriber						*
+************************************************************************/
 class note_subscriber
 {
   public:
@@ -47,5 +57,3 @@ class note_subscriber
 };
 
 }	/* namespace dhaiba_ros */
-
-#endif	/* __DHAIBA_H */

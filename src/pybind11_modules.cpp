@@ -1,9 +1,14 @@
+/*!
+*  \file	pybind11_modules.cpp
+*  \author	Toshio UESHIBA
+*  \brief	Define python3 bindings for note_publisher and note_subscriber
+*/
 #include <iostream>
 
 #include <pybind11/pybind11.h>
 #include <pybind11/functional.h>
 
-#include "dhaiba.h"
+#include "dhaiba_note.h"
 
 namespace py = pybind11;
 

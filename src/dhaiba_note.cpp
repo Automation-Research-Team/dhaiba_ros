@@ -1,9 +1,16 @@
+/*!
+*  \file	dhaiba_note.cpp
+*  \author	Toshio UESHIBA
+*  \brief	publisher/subscriber for exchanging messages between ROS and DhaibaWorks
+*/
 #include <iostream>
-#include "dhaiba.h"
+#include "dhaiba_note.h"
 
 namespace dhaiba_ros
 {
-
+/************************************************************************
+*  class node_publisher							*
+************************************************************************/
 note_publisher::note_publisher()
     :pubDef(nullptr), pubCur(nullptr)
 {
@@ -58,6 +65,9 @@ note_publisher::write(const std::string& data)
     pubCur->write(&note);
 }
 
+/************************************************************************
+*  class node_subscriber						*
+************************************************************************/
 note_subscriber::note_subscriber()
     :subDef(nullptr), subCur(nullptr)
 {
@@ -94,8 +104,8 @@ note_subscriber::note_subscriber(const std::string& participantName,
 			      DhaibaConnect::SampleInfo sampleInfo;
 			      if (!sub->takeNextData(&note, &sampleInfo))
 				  return;
-			      if (sampleInfo.dataChangeType !=
-				  DhaibaConnect::ALIVE)
+			      if (sampleInfo.instanceState !=
+				  DhaibaConnect::InstanceStateKind::ALIVE_INSTANCE_STATE)
 				  return;
 			      std::cout << "  Note message: " << note.value()
 					<< std::endl;
@@ -108,8 +118,8 @@ note_subscriber::note_subscriber(const std::string& participantName,
 			      DhaibaConnect::SampleInfo sampleInfo;
 			      if(!sub->takeNextData(&note, &sampleInfo))
 				  return;
-			      if(sampleInfo.dataChangeType !=
-				 DhaibaConnect::ALIVE)
+			      if(sampleInfo.instanceState !=
+				 DhaibaConnect::InstanceStateKind::ALIVE_INSTANCE_STATE)
 				  return;
 			      std::cout << "\n# data #\n" << note.value()
 					<< std::endl;
