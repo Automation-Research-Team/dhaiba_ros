@@ -5,7 +5,8 @@
 */
 #include <ros/ros.h>
 #include <ros/package.h>
-#include <tf/transform_listener.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <urdf_parser/urdf_parser.h>
 #include <DhaibaConnectN/Common.h>
 #include <DhaibaConnectN/Manager.h>
@@ -26,13 +27,13 @@ const std::string log_element = "element";
 *  global functions							*
 ************************************************************************/
 std::ostream&
-operator <<(std::ostream& out, const tf::Vector3& v)
+operator <<(std::ostream& out, const tf2::Vector3& v)
 {
     return out << '[' << v.x() << ' ' << v.y() << ' ' << v.z() << ']';
 }
 
 std::ostream&
-operator <<(std::ostream& out, const tf::Matrix3x3& m)
+operator <<(std::ostream& out, const tf2::Matrix3x3& m)
 {
     return out << '['
 	       << m[0][0]  << ' ' << m[0][1]  << ' ' << m[0][2] << "\n "
@@ -41,7 +42,7 @@ operator <<(std::ostream& out, const tf::Matrix3x3& m)
 }
 
 std::ostream&
-operator <<(std::ostream& out, const tf::Quaternion& q)
+operator <<(std::ostream& out, const tf2::Quaternion& q)
 {
     return out << '['
 	       << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w()
@@ -49,11 +50,11 @@ operator <<(std::ostream& out, const tf::Quaternion& q)
 }
 
 std::ostream&
-operator <<(std::ostream& out, const tf::Transform& trns)
+operator <<(std::ostream& out, const tf2::Transform& trns)
 {
-    const tf::Matrix3x3& R = trns.getBasis();
-    const tf::Vector3&	 t = trns.getOrigin();
-    const tf::Quaternion q = trns.getRotation();
+    const tf2::Matrix3x3& R = trns.getBasis();
+    const tf2::Vector3&	 t = trns.getOrigin();
+    const tf2::Quaternion q = trns.getRotation();
     return out << "basis: "        << trns.getBasis()
 	       << "\norigin: "     << trns.getOrigin()
 	       << "\nquaternion: " << trns.getRotation();
@@ -85,16 +86,16 @@ operator <<(std::ostream& out, const dhc::Mat44& mat)
 /************************************************************************
 *  static functions							*
 ************************************************************************/
-static tf::Transform
+static tf2::Transform
 transform(const urdf::Pose& pose)
 {
-    return tf::Transform({pose.rotation.x, pose.rotation.y,
+    return tf2::Transform({pose.rotation.x, pose.rotation.y,
     			  pose.rotation.z, pose.rotation.w},
     			 {pose.position.x, pose.position.y, pose.position.z});
 }
 
 static dhc::Vec4
-vec4(const tf::Vector3& origin)
+vec4(const tf2::Vector3& origin)
 {
     dhc::Vec4	vec;
     vec.value() = {1000*origin.x(), 1000*origin.y(), 1000*origin.z(), 1};
@@ -102,7 +103,7 @@ vec4(const tf::Vector3& origin)
 }
 
 static dhc::Mat44
-mat44(const tf::Transform& trns, bool scale=false)
+mat44(const tf2::Transform& trns, bool scale=false)
 {
     const auto	s = (scale ? 1000.0 : 1.0);
     const auto& R = trns.getBasis();
@@ -242,7 +243,8 @@ find_joint(const urdf::LinkConstSharedPtr& link,
 class URDFPublisher
 {
   private:
-    using link_cp = urdf::LinkConstSharedPtr;
+    using link_cp	= urdf::LinkConstSharedPtr;
+    using Transform	= geometry_msgs::TransformStamped;
 
     class Element
     {
@@ -251,11 +253,11 @@ class URDFPublisher
 		~Element()						;
 
 	void	publish_definition()				 const	;
-	void	publish_geometry_state(const tf::Transform& Twj) const	;
+	void	publish_geometry_state(const tf2::Transform& Twj) const	;
 
       private:
 	const urdf::VisualConstSharedPtr	_visual;
-	tf::Transform				_Tjo;
+	tf2::Transform				_Tjo;
 	DhaibaConnect::PublisherInfo* const	_definition_pub;
 	DhaibaConnect::PublisherInfo* const	_geometry_state_pub;
     };
@@ -268,7 +270,7 @@ class URDFPublisher
 
   private:
     void	create_armature(const link_cp& link,
-				const tf::Transform& Twp0,
+				const tf2::Transform& Twp0,
 				dhc::Armature& armature)	const	;
     void	create_elements(const link_cp& link)			;
     void	create_link_state(const link_cp& link,
@@ -276,26 +278,30 @@ class URDFPublisher
 				  bool replace_odom=false)	const	;
 
   private:
-    const ros::NodeHandle				 _nh;
-    const tf::TransformListener				 _listener;
-    const double					 _rate;
-    const bool						 _publish_armature;
-    const bool						 _publish_elements;
+    const ros::NodeHandle			_nh;
+    tf2_ros::Buffer				_buffer;
+    const tf2_ros::TransformListener		_listener;
+    const double				_rate;
+    const bool					_publish_armature;
+    const bool					_publish_elements;
 
-    urdf::ModelInterfaceSharedPtr			 _model;
-    urdf::LinkConstSharedPtr				 _root_link;
-    const std::string					 _odom_frame;
-    const std::string					 _replaced_odom_frame;
-    std::unordered_map<std::string, const tf::Transform> _Tj0p0;
-    std::unordered_map<std::string, const Element>	 _elements;
+    urdf::ModelInterfaceSharedPtr		_model;
+    urdf::LinkConstSharedPtr			_root_link;
+    const std::string				_odom_frame;
+    const std::string				_replaced_odom_frame;
+    std::unordered_map<std::string,
+		       const tf2::Transform>	_Tj0p0;
+    std::unordered_map<std::string,
+		       const Element>		_elements;
 
-    DhaibaConnect::PublisherInfo*			 _definition_pub;
-    DhaibaConnect::PublisherInfo*			 _link_state_pub;
+    DhaibaConnect::PublisherInfo*		_definition_pub;
+    DhaibaConnect::PublisherInfo*		_link_state_pub;
 };
 
 URDFPublisher::URDFPublisher(const std::string& name)
     :_nh(name),
-     _listener(),
+     _buffer(),
+     _listener(_buffer),
      _rate(_nh.param("rate", 10.0)),
      _publish_armature(_nh.param("publish_armature", true)),
      _publish_elements(_nh.param("publish_elements", true)),
@@ -369,7 +375,7 @@ URDFPublisher::URDFPublisher(const std::string& name)
 				 {
 				     dhc::Armature	armature;
 				     create_armature(_root_link,
-						     tf::Transform(
+						     tf2::Transform(
 							 {0.0, 0.0, 0.0, 1.0},
 							 {0.0, 0.0, 0.0}),
 						     armature);
@@ -414,7 +420,7 @@ URDFPublisher::run() const
 }
 
 void
-URDFPublisher::create_armature(const link_cp& link, const tf::Transform& Twp0,
+URDFPublisher::create_armature(const link_cp& link, const tf2::Transform& Twp0,
 			       dhc::Armature& armature) const
 {
     for (const auto& child_link : link->child_links)
@@ -464,21 +470,26 @@ URDFPublisher::create_link_state(const link_cp& link,
     {
 	try
 	{
-	    tf::StampedTransform	Twj;
+	    tf2::Transform	Twj;
 
 	    if (replace_odom)
 	    {
-		_listener.lookupTransform(_root_link->name,
-					  _replaced_odom_frame,
-					  ros::Time(0), Twj);
-		tf::StampedTransform	Toj;
-		_listener.lookupTransform(_odom_frame, link->name,
-					  ros::Time(0), Toj);
-		Twj *= Toj;
+		const auto Two_msg = _buffer.lookupTransform(
+					_root_link->name, _replaced_odom_frame,
+					ros::Time(0)).transform;
+		const auto Toj_msg = _buffer.lookupTransform(
+					_odom_frame, link->name,
+					ros::Time(0)).transform;
+		tf2::Transform	Two, Toj;
+		tf2::fromMsg(Two_msg, Two);
+		tf2::fromMsg(Toj_msg, Toj);
+		Twj = Two * Toj;
 	    }
 	    else
-		_listener.lookupTransform(_root_link->name, link->name,
-					  ros::Time(0), Twj);
+		tf2::fromMsg(_buffer.lookupTransform(
+				 _root_link->name,
+				 link->name, ros::Time(0)).transform,
+			     Twj);
 	    _elements.find(link->name)->second.publish_geometry_state(Twj);
 	}
         catch (const std::exception& err)
@@ -494,9 +505,11 @@ URDFPublisher::create_link_state(const link_cp& link,
 	{
 	    try
 	    {
-		tf::StampedTransform	Tpj;
-		_listener.lookupTransform(link->name, child_link->name,
-					  ros::Time(0), Tpj);
+		const auto Tpj_msg = _buffer.lookupTransform(
+					link->name, child_link->name,
+					ros::Time(0)).transform;
+		tf2::Transform	Tpj;
+		tf2::fromMsg(Tpj_msg, Tpj);
 		link_state.value().push_back(mat44(_Tj0p0[child_link->name]*
 						   Tpj));
 
@@ -535,7 +548,7 @@ URDFPublisher::Element::Element(const link_cp& link)
 	const auto&	scale = static_cast<const urdf::Mesh*>(
 				    _visual->geometry.get())->scale;
 	const auto	Tjo   = transform(_visual->origin);
-	_Tjo = tf::Transform(Tjo.getBasis().scaled({scale.x,
+	_Tjo = tf2::Transform(Tjo.getBasis().scaled({scale.x,
 						    scale.y, scale.z}),
 			     Tjo.getOrigin());
     }
@@ -648,7 +661,7 @@ URDFPublisher::Element::publish_definition() const
 }
 
 void
-URDFPublisher::Element::publish_geometry_state(const tf::Transform& Twj) const
+URDFPublisher::Element::publish_geometry_state(const tf2::Transform& Twj) const
 {
     dhc::GeometryState	state;
     state.transform() = mat44(Twj * _Tjo, true);

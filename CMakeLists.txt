@@ -17,7 +17,8 @@ find_package(catkin REQUIRED
     roscpp
     roslib
     geometry_msgs
-    tf
+    tf2_ros
+    tf2_geometry_msgs
 )
 
 set(CMAKE_MODULE_PATH $ENV{CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR})
