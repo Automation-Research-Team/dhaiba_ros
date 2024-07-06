@@ -11,10 +11,11 @@
   <depend>roscpp</depend>
   <depend>genpy</depend>
   <depend>rospy</depend>
+  <depend>rospy_message_converter</depend>
   <depend>geometry_msgs</depend>
   <depend>tf2_ros</depend>
   <depend>tf2_geometry_msgs</depend>
-  <depend>pybind11</depend>
+  <depend>pybind11_catkin</depend>
   <depend>DhaibaConnectN</depend>
 
 </package>

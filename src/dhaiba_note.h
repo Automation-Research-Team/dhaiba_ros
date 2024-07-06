@@ -14,16 +14,14 @@
 namespace dhaiba_ros
 {
 /************************************************************************
-*  class node_publisher							*
+*  class NotePublisher							*
 ************************************************************************/
-class note_publisher
+class NotePublisher
 {
   public:
-		note_publisher()					;
-		~note_publisher()					;
-
-		note_publisher(const std::string& participantName,
-			       const std::string& topicNameStartsWith)	;
+		NotePublisher(const std::string& participant,
+			       const std::string& element)		;
+		~NotePublisher()					;
 
     void	write(const std::string& data)				;
 
@@ -36,18 +34,16 @@ class note_publisher
 };
 
 /************************************************************************
-*  class node_subscriber						*
+*  class NoteSubscriber						*
 ************************************************************************/
-class note_subscriber
+class NoteSubscriber
 {
   public:
-		note_subscriber()					;
-		~note_subscriber()					;
-
-		note_subscriber(const std::string& participantName,
-				const std::string& topicNameStartsWith,
-				const std::function<void(const std::string&)>&
-					callback)			;
+		NoteSubscriber(const std::string& participant,
+			       const std::string& element,
+			       const std::function<void(const std::string&)>&
+					 callback)			;
+		~NoteSubscriber()					;
 
     int		my_test()			const	{ return 2; }
 

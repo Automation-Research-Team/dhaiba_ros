@@ -1,0 +1,12 @@
+<?xml version="1.0" ?>
+<launch>
+
+  <arg name="config_file" default="$(dirname)/../config/dhaiba_bridge.yaml"/>
+
+  <node name="dhaiba_bridge"
+  	pkg="dhaiba_ros" type="dhaiba_bridge.py" output="screen"
+	clear_params="true">
+    <rosparam file="$(arg config_file)"/>
+  </node>
+
+</launch>

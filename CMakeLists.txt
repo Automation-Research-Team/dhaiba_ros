@@ -19,6 +19,7 @@ find_package(catkin REQUIRED
     geometry_msgs
     tf2_ros
     tf2_geometry_msgs
+    pybind11_catkin
 )
 
 set(CMAKE_MODULE_PATH $ENV{CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR})
@@ -35,8 +36,6 @@ else()
   message(STATUS "DhaibaConnectN_INCLUDE_DIR: ${DhaibaConnectN_INCLUDE_DIR}")
   message(STATUS "DhaibaConnectN_LIBRARY: ${DhaibaConnectN_LIBRARY}")
 endif()
-
-find_package(pybind11 REQUIRED)
 
 add_definitions(-DVERSION_INFO=\"${PROJECT_NAME}_VERSION\")
 add_definitions(-DLIBRARY_NAME=${PROJECT_NAME})
@@ -55,8 +54,6 @@ include_directories(
   ${DhaibaConnectN_INCLUDE_DIR}
 )
 
-catkin_python_setup()
-
 catkin_package(
   CATKIN_DEPENDS
     roscpp
@@ -65,73 +62,90 @@ catkin_package(
     ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}/${PROJECT_NAME}.so
 )
 
-add_executable(urdf_publisher
-  src/urdf_publisher.cpp
+catkin_package(
+  LIBRARIES
+  CATKIN_DEPENDS
+    pybind11_catkin
 )
 
-add_dependencies(urdf_publisher
-  ${${PREOJECT_NAME}_EXPORTED_TARGETS}
-  ${catkin_EXPORTED_TARGETS}
+#
+#  urdf_publisher
+#
+add_executable(
+  urdf_publisher
+    src/urdf_publisher.cpp
 )
 
-target_link_libraries(urdf_publisher
-  ${catkin_LIBRARIES}
-  ${roscpp_LIBRARIES}
-  ${URDFDOM_LIBRARIES}
-  ${DhaibaConnectN_LIBRARY}
+add_dependencies(
+  urdf_publisher
+    ${${PREOJECT_NAME}_EXPORTED_TARGETS}
+    ${catkin_EXPORTED_TARGETS}
 )
 
-add_executable(test_note_pub
-  src/test_note_pub.cpp
+target_link_libraries(
+  urdf_publisher
+    ${catkin_LIBRARIES}
+    ${roscpp_LIBRARIES}
+    ${URDFDOM_LIBRARIES}
+    ${DhaibaConnectN_LIBRARY}
 )
 
-add_dependencies(test_note_pub
-  ${${PREOJECT_NAME}_EXPORTED_TARGETS}
-  ${catkin_EXPORTED_TARGETS}
+#
+#  test_note_pub
+#
+add_executable(
+  test_note_pub
+    src/test_note_pub.cpp
+    src/dhaiba_note.cpp
 )
 
-target_link_libraries(test_note_pub
-  ${catkin_LIBRARIES}
-  ${roscpp_LIBRARIES}
-  ${DhaibaConnectN_LIBRARY}
+add_dependencies(
+  test_note_pub
+    ${${PREOJECT_NAME}_EXPORTED_TARGETS}
+    ${catkin_EXPORTED_TARGETS}
 )
 
-#add_executable(test_note_sub
-#  src/test_note_sub.cpp
-#)
-
-#add_dependencies(test_note_sub
-#  ${${PREOJECT_NAME}_EXPORTED_TARGETS}
-#  ${catkin_EXPORTED_TARGETS}
-#)
-
-#target_link_libraries(test_note_sub
-#  ${catkin_LIBRARIES}
-#  ${roscpp_LIBRARIES}
-#  ${DhaibaConnectN_LIBRARY}
-#)
-
-add_library(${PROJECT_NAME}
-  SHARED src/pybind11_modules.cpp src/dhaiba_note.cpp)
-
-target_include_directories(${PROJECT_NAME}
-  PRIVATE ${PYBIND11_INCLUDE_DIR}
-  PRIVATE ${pybind11_INCLUDE_DIR}
-  PRIVATE ${PYTHON_INCLUDE_DIRS}
-  PRIVATE ${DhaibaConnectN_INCLUDE_DIR}
+target_link_libraries(
+  test_note_pub
+    ${catkin_LIBRARIES}
+    ${roscpp_LIBRARIES}
+    ${DhaibaConnectN_LIBRARY}
 )
 
-target_link_libraries(${PROJECT_NAME}
-  ${PYTHON_LIBRARIES}
-  ${DhaibaConnectN_LIBRARY}
+#
+#  test_note_sub
+#
+add_executable(
+  test_note_sub
+    src/test_note_sub.cpp
+    src/dhaiba_note.cpp
 )
 
-set_target_properties(${PROJECT_NAME}
-  PROPERTIES
-    PREFIX "${PYTHON_MODULE_PREFIX}"
-    SUFFIX "${PYTHON_MODULE_EXTENSION}"
-    CXX_VISIBILITY_PRESET "hidden"
-    LIBRARY_OUTPUT_DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}/
+add_dependencies(
+  test_note_sub
+    ${${PREOJECT_NAME}_EXPORTED_TARGETS}
+    ${catkin_EXPORTED_TARGETS}
+)
+
+target_link_libraries(
+  test_note_sub
+    ${catkin_LIBRARIES}
+    ${roscpp_LIBRARIES}
+    ${DhaibaConnectN_LIBRARY}
+)
+
+#
+#
+#
+pybind_add_module(
+  ${PROJECT_NAME} MODULE
+    src/dhaiba_note.cpp
+    src/pybind11_modules.cpp
+)
+
+target_link_libraries(
+  ${PROJECT_NAME} PRIVATE
+    ${DhaibaConnectN_LIBRARY}
 )
 
 #############
@@ -139,17 +153,21 @@ set_target_properties(${PROJECT_NAME}
 #############
 install(
   TARGETS
-    urdf_publisher #test_note_pub test_note_sub
+    urdf_publisher test_note_pub test_note_sub ${PROJECT_NAME}
   ARCHIVE
     DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY
-    DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
   RUNTIME
     DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
-install(
+catkin_install_python(
   PROGRAMS
     scripts/dhaiba_ros_bridge.py
-    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+    scripts/dhaiba_bridge.py
+    scripts/pub.py
+    scripts/sub.py
+    scripts/test.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

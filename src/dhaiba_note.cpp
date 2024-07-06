@@ -9,31 +9,27 @@
 namespace dhaiba_ros
 {
 /************************************************************************
-*  class node_publisher							*
+*  class NotePublisher							*
 ************************************************************************/
-note_publisher::note_publisher()
+NotePublisher::NotePublisher(const std::string& participant,
+			     const std::string& element)
     :pubDef(nullptr), pubCur(nullptr)
 {
-}
-
-note_publisher::note_publisher(const std::string& participantName,
-			       const std::string& topicNameStartsWith)
-    :pubDef(nullptr), pubCur(nullptr)
-{
-    std::cout << "\n#note_publisher# "
-	      << participantName << " " << topicNameStartsWith << std::endl;
+    std::cerr << "*** NotePublisher::NotePublisher(): "
+	      << participant << '/' << element << ".Note" << std::endl;
 
     const auto	manager = DhaibaConnect::Manager::instance();
-    if (manager->participantName() != participantName ||
+    if (manager->participantName() != participant ||
 	!manager->isInitialized())
     {
-        manager->initialize(participantName);
-        std::cout << "\n#note_publisher# manager initialize" << std::endl;
+        manager->initialize(participant);
+        std::cerr << "*** NotePublisher::NotePublisher(): initialize manager"
+		  << std::endl;
     }
 
-    pubDef = manager->createPublisher(topicNameStartsWith + "::Definition",
+    pubDef = manager->createPublisher(element + ".Note::Definition",
 				      "dhc::Text", false, true);
-    pubCur = manager->createPublisher(topicNameStartsWith + "::CurrentText",
+    pubCur = manager->createPublisher(element + ".Note::CurrentText",
 				      "dhc::Text", false, false);
 
     Connections::connect(&pubDef->matched,
@@ -46,9 +42,9 @@ note_publisher::note_publisher(const std::string& participantName,
 			  }});
 }
 
-note_publisher::~note_publisher()
+NotePublisher::~NotePublisher()
 {
-  // std::cout << "\n#note_publisher::~note_publisher#" << std::endl;
+    std::cerr << "*** NotePublisher::~NotePublisher()" << std::endl;
     const auto	manager = DhaibaConnect::Manager::instance();
     if (pubCur)
         manager->removePublisher(pubCur);
@@ -57,57 +53,61 @@ note_publisher::~note_publisher()
 }
 
 void
-note_publisher::write(const std::string& data)
+NotePublisher::write(const std::string& data)
 {
-    std::cout << "\n# data #\n" << data << std::endl;
+    std::cerr << "*** NotePublisher::write(): " << data << std::endl;
+    if (data.size() > 255)
+    {
+	std::cerr << "*** NotePublisher::wirte(): data size["
+		  << data.size() << "] exceeds limit[255]"
+		  << std::endl;
+	return;
+    }
     dhc::Text note;
     note.value() = data;
     pubCur->write(&note);
 }
 
 /************************************************************************
-*  class node_subscriber						*
+*  class NoteSubscriber							*
 ************************************************************************/
-note_subscriber::note_subscriber()
+NoteSubscriber::NoteSubscriber(const std::string& participant,
+			       const std::string& element,
+			       const std::function<void(const std::string&)>&
+				     callback)
     :subDef(nullptr), subCur(nullptr)
 {
-}
-
-note_subscriber::note_subscriber(const std::string& participantName,
-				 const std::string& topicNameStartsWith,
-				 const std::function<void(const std::string&)>&
-				 callback)
-    :subDef(nullptr), subCur(nullptr)
-{
-    std::cout << "\n#note_subscriber# "
-                << participantName << " " << topicNameStartsWith << std::endl;
+    std::cerr << "*** NoteSubscriber::NoteSubscriber(): "
+	      << participant << '/' << element << ".Note" << std::endl;
 
     const auto	manager = DhaibaConnect::Manager::instance();
-    if (manager->participantName() != participantName ||
+    if (manager->participantName() != participant ||
         !manager->isInitialized())
     {
-        manager->initialize(participantName);
-        std::cout << "\n#note_subscriber# manager initialize" << std::endl;
+        manager->initialize(participant);
+        std::cerr << "*** NoteSubscriber::NoteSubscriber(): initialize manager"
+		  << std::endl;
     }
 
-    subDef = manager->createSubscriber(topicNameStartsWith + "::Definition",
+    subDef = manager->createSubscriber(element + ".Note::Definition",
 				       "dhc::Text", false, true);
-    subCur = manager->createSubscriber(topicNameStartsWith + "::CurrentText",
+    subCur = manager->createSubscriber(element + ".Note::CurrentText",
 				       "dhc::Text", false, false);
 
     Connections::connect(&subDef->newDataMessage,
 			 {[&](DhaibaConnect::SubscriberInfo* sub)
 			  {
-			      std::cout << "Definition data received."
+			      std::cerr << "Definition data received."
 					<< std::endl;
 			      dhc::Text note;
 			      DhaibaConnect::SampleInfo sampleInfo;
 			      if (!sub->takeNextData(&note, &sampleInfo))
 				  return;
 			      if (sampleInfo.instanceState !=
-				  DhaibaConnect::InstanceStateKind::ALIVE_INSTANCE_STATE)
+				  DhaibaConnect::InstanceStateKind
+					       ::ALIVE_INSTANCE_STATE)
 				  return;
-			      std::cout << "  Note message: " << note.value()
+			      std::cerr << "*** Note message: " << note.value()
 					<< std::endl;
 			  }});
 
@@ -119,21 +119,18 @@ note_subscriber::note_subscriber(const std::string& participantName,
 			      if(!sub->takeNextData(&note, &sampleInfo))
 				  return;
 			      if(sampleInfo.instanceState !=
-				 DhaibaConnect::InstanceStateKind::ALIVE_INSTANCE_STATE)
+				 DhaibaConnect::InstanceStateKind
+					      ::ALIVE_INSTANCE_STATE)
 				  return;
-			      std::cout << "\n# data #\n" << note.value()
+			      std::cerr << "*** data: " << note.value()
 					<< std::endl;
 			      callback(note.value());
 			  }});
-
-    std::cout << "Press any key and return to quit: " << std::endl;
-    std::string s;
-    std::cin >> s;
 }
 
-note_subscriber::~note_subscriber()
+NoteSubscriber::~NoteSubscriber()
 {
-  // std::cout << "\n#note_subscriber::~note_subscriber#" << std::endl;
+    std::cerr << "*** NoteSubscriber::~NoteSubscriber()" << std::endl;
     const auto	manager = DhaibaConnect::Manager::instance();
     if (subCur)
         manager->removeSubscriber(subCur);
