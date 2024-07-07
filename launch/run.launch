@@ -11,13 +11,13 @@
 
   <node name="$(anon dhaiba_ros_bridge)"
 	pkg="dhaiba_ros" type="dhaiba_ros_bridge.py"
-  	args="$(arg op) $(arg name) $(arg participant) $(arg element).Note"
+  	args="$(arg op) $(arg name) $(arg participant) $(arg element)"
 	if="$(eval op == 'pub')"/>
 
   <node name="$(anon dhaiba_ros_bridge)"
 	pkg="dhaiba_ros" type="dhaiba_ros_bridge.py"
   	args="$(arg op) $(anon dhaiba_ros_bridge)
-	      $(arg participant)/$(arg element).Note $(arg name) $(arg type)"
+	      $(arg participant)/$(arg element) $(arg name) $(arg type)"
 	if="$(eval op == 'sub')"/>
 
   <node name="$(anon dhaiba_ros_bridge)"

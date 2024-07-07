@@ -5,11 +5,16 @@
 namespace dhaiba_ros
 {
 void
+print(const std::string& value)
+{
+    std::cerr << "value: " << value << std::endl;
+}
+
+void
 doJob(const std::string& participant, const std::string& element)
 {
-    NoteSubscriber	sub(participant, element,
-			    [](const std::string& value)
-			    { std::cerr << "value: " << value << std::endl; });
+    NoteSubscriber	sub(participant, element);
+    sub.registerCallback(print);
     for (;;)
 	usleep(500 * 1000);
 }

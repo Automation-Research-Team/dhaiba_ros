@@ -20,7 +20,7 @@ class NotePublisher
 {
   public:
 		NotePublisher(const std::string& participant,
-			       const std::string& element)		;
+			      const std::string& element)		;
 		~NotePublisher()					;
 
     void	write(const std::string& data)				;
@@ -34,17 +34,19 @@ class NotePublisher
 };
 
 /************************************************************************
-*  class NoteSubscriber						*
+*  class NoteSubscriber							*
 ************************************************************************/
 class NoteSubscriber
 {
   public:
+    using	callback_t = std::function<void(const std::string&)>;
+
+  public:
 		NoteSubscriber(const std::string& participant,
-			       const std::string& element,
-			       const std::function<void(const std::string&)>&
-					 callback)			;
+			       const std::string& element)		;
 		~NoteSubscriber()					;
 
+    void	registerCallback(const callback_t& callback)		;
     int		my_test()			const	{ return 2; }
 
   private:

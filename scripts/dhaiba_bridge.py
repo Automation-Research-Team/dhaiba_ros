@@ -36,14 +36,12 @@
 # Author: Toshio Ueshiba (t.ueshiba@aist.go.jp)
 #
 import rospy, rosgraph, rostopic, rosservice
-import threading, yaml
+import threading
 
 from dhaiba_ros     import note_publisher, note_subscriber
 from roslib.message import get_message_class
 from rospy_message_converter.json_message_converter \
 import convert_ros_message_to_json, convert_json_to_ros_message
-from rospy_message_converter.message_converter \
-import convert_ros_message_to_dictionary, convert_dictionary_to_ros_message
 
 #########################################################################
 #  class DhaibaBridge                                                   #
@@ -94,7 +92,8 @@ class DhaibaBridge(object):
                 break
             rospy.sleep(0.5)
         if topic is None:
-            rospy.logerr('(DhaibaBridge) unknown ROS topic[%s]', ros_topic_name)
+            rospy.logerr('(DhaibaBridge) unknown ROS topic[%s]',
+                         ros_topic_name)
             return None
 
         dhaiba_element_name  = ros_to_dhaiba_info['to']
@@ -144,14 +143,14 @@ class DhaibaBridge(object):
 
     def _dhaiba_to_ros_thread(self, dhaiba_element_name,
                               ros_topic_name, ros_topic_type):
+        dhaiba_sub = note_subscriber(self._participant, dhaiba_element_name)
         ros_pub    = rospy.Publisher(ros_topic_name,
                                      get_message_class(ros_topic_type),
                                      queue_size=100)
-        dhaiba_sub = note_subscriber(
-                         self._participant, dhaiba_element_name,
-                         lambda json: self._dhaiba_to_ros_cb(json,
-                                                             ros_topic_type,
-                                                             ros_pub))
+        dhaiba_sub.register_callback(lambda json:
+                                     self._dhaiba_to_ros_cb(json,
+                                                            ros_topic_type,
+                                                            ros_pub))
         rospy.spin()
 
     def _dhaiba_to_ros_cb(self, json, ros_topic_type, ros_pub):
@@ -163,7 +162,8 @@ class DhaibaBridge(object):
         service_name = service_info['name']
         service_type = rosservice.get_service_type(service_name)
         if service_type is None:
-            rospy.logerr('(DhaibaBridge) unknown ROS service[%s]', service_name)
+            rospy.logerr('(DhaibaBridge) unknown ROS service[%s]',
+                         service_name)
             return None
 
         dhaiba_request_name  = service_info['request']
@@ -184,12 +184,11 @@ class DhaibaBridge(object):
         service_type  = rosservice.get_service_type(service_name)
         service_class = rosservice.get_service_class_by_name(service_name)
         service_call  = rospy.ServiceProxy(service_name, service_class)
-        dhaiba_sub    = note_subscriber(self._participant, dhaiba_request_name,
-                                        lambda req_json: self._service_cb(
-                                                             req_json,
-                                                             service_type,
-                                                             service_call,
-                                                             dhaiba_pub))
+        dhaiba_sub    = note_subscriber(self._participant, dhaiba_request_name)
+        dhaiba_sub.register_callback(lambda req_json:
+                                     self._service_cb(req_json, service_type,
+                                                      service_call,
+                                                      dhaiba_pub))
         rospy.spin()
 
     def _service_cb(self, req_json, service_type, service_call, dhaiba_pub):

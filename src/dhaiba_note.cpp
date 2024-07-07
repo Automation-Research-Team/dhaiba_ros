@@ -4,6 +4,10 @@
 *  \brief	publisher/subscriber for exchanging messages between ROS and DhaibaWorks
 */
 #include <iostream>
+#include <thread>
+#include <chrono>
+#include <pybind11/pybind11.h>
+#include <pybind11/functional.h>
 #include "dhaiba_note.h"
 
 namespace dhaiba_ros
@@ -55,7 +59,7 @@ NotePublisher::~NotePublisher()
 void
 NotePublisher::write(const std::string& data)
 {
-    std::cerr << "*** NotePublisher::write(): " << data << std::endl;
+    // std::cerr << "*** NotePublisher::write(): " << data << std::endl;
     if (data.size() > 255)
     {
 	std::cerr << "*** NotePublisher::wirte(): data size["
@@ -72,13 +76,11 @@ NotePublisher::write(const std::string& data)
 *  class NoteSubscriber							*
 ************************************************************************/
 NoteSubscriber::NoteSubscriber(const std::string& participant,
-			       const std::string& element,
-			       const std::function<void(const std::string&)>&
-				     callback)
+			       const std::string& element)
     :subDef(nullptr), subCur(nullptr)
 {
     std::cerr << "*** NoteSubscriber::NoteSubscriber(): "
-	      << participant << '/' << element << ".Note" << std::endl;
+	      << element << ".Note" << std::endl;
 
     const auto	manager = DhaibaConnect::Manager::instance();
     if (manager->participantName() != participant ||
@@ -89,6 +91,8 @@ NoteSubscriber::NoteSubscriber(const std::string& participant,
 		  << std::endl;
     }
 
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+
     subDef = manager->createSubscriber(element + ".Note::Definition",
 				       "dhc::Text", false, true);
     subCur = manager->createSubscriber(element + ".Note::CurrentText",
@@ -97,34 +101,16 @@ NoteSubscriber::NoteSubscriber(const std::string& participant,
     Connections::connect(&subDef->newDataMessage,
 			 {[&](DhaibaConnect::SubscriberInfo* sub)
 			  {
-			      std::cerr << "Definition data received."
-					<< std::endl;
-			      dhc::Text note;
-			      DhaibaConnect::SampleInfo sampleInfo;
+			      dhc::Text			note;
+			      DhaibaConnect::SampleInfo	sampleInfo;
 			      if (!sub->takeNextData(&note, &sampleInfo))
 				  return;
 			      if (sampleInfo.instanceState !=
 				  DhaibaConnect::InstanceStateKind
 					       ::ALIVE_INSTANCE_STATE)
 				  return;
-			      std::cerr << "*** Note message: " << note.value()
-					<< std::endl;
-			  }});
-
-    Connections::connect(&subCur->newDataMessage,
-			 {[&](DhaibaConnect::SubscriberInfo* sub)
-			  {
-			      dhc::Text note;
-			      DhaibaConnect::SampleInfo sampleInfo;
-			      if(!sub->takeNextData(&note, &sampleInfo))
-				  return;
-			      if(sampleInfo.instanceState !=
-				 DhaibaConnect::InstanceStateKind
-					      ::ALIVE_INSTANCE_STATE)
-				  return;
-			      std::cerr << "*** data: " << note.value()
-					<< std::endl;
-			      callback(note.value());
+			      std::cerr << "*** Definition data: "
+					<< note.value() << std::endl;
 			  }});
 }
 
@@ -138,4 +124,58 @@ NoteSubscriber::~NoteSubscriber()
         manager->removeSubscriber(subDef);
 }
 
-}	/* namespace dhaiba_ros */
+void
+NoteSubscriber::registerCallback(const callback_t& callback)
+{
+    Connections::connect(&subCur->newDataMessage,
+			 {[callback](DhaibaConnect::SubscriberInfo* sub)
+			  {
+			      dhc::Text			note;
+			      DhaibaConnect::SampleInfo	sampleInfo;
+			      if(!sub->takeNextData(&note, &sampleInfo))
+				  return;
+			      if(sampleInfo.instanceState !=
+				 DhaibaConnect::InstanceStateKind
+					      ::ALIVE_INSTANCE_STATE)
+				  return;
+			      std::cerr << "*** Current data: "
+					<< note.value() << std::endl;
+
+			      try
+			      {
+				  callback(note.value());
+			      }
+			      catch (std::exception& err)
+			      {
+				  std::cerr << "*** err: " << err.what()
+					    << std::endl;
+
+			      }
+			  }});
+}
+}	// namespace dhaiba_ros
+
+namespace py = pybind11;
+
+PYBIND11_MODULE(dhaiba_ros, m)
+{
+    m.doc() = R"pbdoc(Pybind11 dhaiba plugin)pbdoc";
+
+    using namespace dhaiba_ros;
+
+    py::class_<NotePublisher>(m, "note_publisher")
+        .def(py::init<const std::string&, const std::string&>())
+        .def("write", &NotePublisher::write)
+        .def("my_test", &NotePublisher::my_test);
+
+    py::class_<NoteSubscriber>(m, "note_subscriber")
+        .def(py::init<const std::string&, const std::string&>())
+        .def("register_callback", &NoteSubscriber::registerCallback)
+        .def("my_test", &NoteSubscriber::my_test);
+
+#ifdef VERSION_INFO
+    m.attr("__version__") = VERSION_INFO;
+#else
+    m.attr("__version__") = "dev";
+#endif
+}

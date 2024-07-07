@@ -140,7 +140,6 @@ target_link_libraries(
 pybind_add_module(
   ${PROJECT_NAME} MODULE
     src/dhaiba_note.cpp
-    src/pybind11_modules.cpp
 )
 
 target_link_libraries(

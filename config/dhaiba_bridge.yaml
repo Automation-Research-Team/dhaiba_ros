@@ -1,3 +1,8 @@
 ros_to_dhaiba:
-  - from: /tf
-    to:   tf
+ - from: /tf
+   to:   tf
+
+dhaiba_to_ros:
+  - from: PARTICIPANT594312/myNote
+    to:   /mynote
+    type: geometry_msgs/Point
