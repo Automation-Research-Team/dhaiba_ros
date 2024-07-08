@@ -209,7 +209,7 @@ class DhaibaBridge(object):
             self._condition = threading.Condition()
             self._response  = None
 
-        def wait_response():
+        def wait():
             loop_period = rospy.Duration(0.1)
             with self._condition:
                 while self._response is None:
@@ -238,30 +238,31 @@ class DhaibaBridge(object):
                                     dhaiba_request_name, dhaiba_response_name))
         th.daemon = True
         th.start()
-        rospy.loginfo('(DhaibaBridge) DHAIBA[%s] ==> ROS[%s(%s)] ==> DHAIBA[%s]',
-                      dhaiba_request_name, service_name, service_type,
-                      dhaiba_response_name)
+        rospy.loginfo('(DhaibaBridge) %s:%s ROS ==> DHAIBA[%s] ==> DHAIBA[%s] ==> ROS',
+                      service_name, service_type,
+                      dhaiba_request_name, dhaiba_response_name)
         return th
 
     def _service_server_thread(self, service_name,
                                dhaiba_request_name, dhaiba_response_name):
-        dhaiba_pub    = note_publisher(self._participant, dhaiba_request_name)
-        dhaiba_sub    = note_subscriber(self._participant,
-                                        dhaiba_response_name)
+        dhaiba_pub = note_publisher(self._participant, dhaiba_request_name)
+        dhaiba_sub = note_subscriber(self._participant, dhaiba_response_name)
+        dhaiba_response = DhaibaResponse()
         dhaiba_sub.register_callback(lambda res :
-                                     self._dhaiba_response_cb(res, res_json))
+                                     self._dhaiba_response_cb(res,
+                                                              dhaiba_response))
         service_type  = rosservice.get_service_type(service_name)
         service_class = rosservice.get_service_class_by_name(service_name)
         service_srver = rospy.Service(service_name, service_class,
                                       lambda req :
-                                      self._service_server(req, service_type,))
+                                      self._service_server_cb(req,
+                                                              service_type,
+                                                              dhaiba_response))
         rospy.spin()
 
-
-    def _service_server_cb(self, req, service_type, res_json):
-        dhaiba_response = DhaibaResponse()
+    def _service_server_cb(self, req, service_type, dhaiba_response):
         dhaiba_pub.write(convert_ros_message_to_json(req, True))
-        dhaiba_response.wait_response()
+        dhaiba_response.wait()
         return convert_json_to_ros_message(service_type,
                                            dhaiba_response.get_reponse())
 
