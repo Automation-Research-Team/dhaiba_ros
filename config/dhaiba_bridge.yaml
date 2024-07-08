@@ -3,6 +3,6 @@ ros_to_dhaiba:
    to:   tf
 
 dhaiba_to_ros:
-  - from: PARTICIPANT594312/myNote
+  - from: PARTICIPANT335589/myNote
     to:   /mynote
     type: geometry_msgs/Point

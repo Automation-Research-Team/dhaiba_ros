@@ -60,15 +60,17 @@ void
 NotePublisher::write(const std::string& data)
 {
     // std::cerr << "*** NotePublisher::write(): " << data << std::endl;
+    dhc::Text note;
     if (data.size() > 255)
     {
 	std::cerr << "*** NotePublisher::wirte(): data size["
 		  << data.size() << "] exceeds limit[255]"
 		  << std::endl;
-	return;
+      //return;
+	note.value() = data.substr(0, 255);
     }
-    dhc::Text note;
-    note.value() = data;
+    else
+	note.value() = data;
     pubCur->write(&note);
 }
 

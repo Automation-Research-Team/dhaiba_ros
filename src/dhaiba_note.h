@@ -47,6 +47,7 @@ class NoteSubscriber
 		~NoteSubscriber()					;
 
     void	registerCallback(const callback_t& callback)		;
+
     int		my_test()			const	{ return 2; }
 
   private:
