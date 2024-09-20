@@ -135,7 +135,7 @@ target_link_libraries(
 )
 
 #
-#
+#  pybind11 module
 #
 pybind_add_module(
   ${PROJECT_NAME} MODULE
@@ -163,10 +163,6 @@ install(
 
 catkin_install_python(
   PROGRAMS
-    scripts/dhaiba_ros_bridge.py
     scripts/dhaiba_bridge.py
-    scripts/pub.py
-    scripts/sub.py
-    scripts/test.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
